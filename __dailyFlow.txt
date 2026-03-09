@@ -1,0 +1,5 @@
+cd /opt/chimbi.com
+docker compose down
+docker compose up -d
+sleep 5
+docker compose logs node --tail=5
