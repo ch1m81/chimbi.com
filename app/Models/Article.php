@@ -16,6 +16,7 @@ class Article extends Model
         'source_url',
         'thumbnail',
         'youtube_code',
+        'thumbnail_url',
         'love',
         'published',
         'published_at',
