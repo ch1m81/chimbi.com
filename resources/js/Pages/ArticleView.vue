@@ -1,4 +1,11 @@
 <template>
+    <AppHead
+        :title="article.title"
+        :description="articleDescription"
+        :image="articleImage"
+        type="article"
+    />
+
     <!-- Top accent line -->
     <div class="fixed top-0 left-0 w-full h-2.5 bg-[#383838] z-50"></div>
 
@@ -86,6 +93,7 @@
 
 <script setup>
 import AppFooter from "@/Components/AppFooter.vue";
+import AppHead from "@/Components/AppHead.vue";
 import AppHeader from "@/Components/AppHeader.vue";
 import AppPagination from "@/Components/AppPagination.vue";
 import ArticleCard from "@/Components/ArticleCard.vue";
@@ -102,6 +110,24 @@ const props = defineProps({
 });
 
 const copied = ref(false);
+
+const articleImage = computed(() => {
+    if (props.article.thumbnail_url) return props.article.thumbnail_url;
+    if (props.article.thumbnail)
+        return `/storage/articles/${props.article.thumbnail}`;
+    return null;
+});
+
+const articleDescription = computed(() => {
+    if (!props.article.body) return "chimbi h0mepage";
+    const tmp = document.createElement("div");
+    tmp.innerHTML = props.article.body;
+    const text = (tmp.textContent || tmp.innerText || "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 160);
+    return text || "chimbi h0mepage";
+});
 const encodedUrl = computed(() => encodeURIComponent(window.location.href));
 const encodedTitle = computed(() => encodeURIComponent(props.article.title));
 

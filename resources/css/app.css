@@ -17,6 +17,10 @@ body {
     font-size: 12px;
 }
 
+html {
+    scroll-behavior: smooth !important;
+}
+
 a:link,
 a:visited,
 a:active {

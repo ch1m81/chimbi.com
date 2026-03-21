@@ -36,7 +36,6 @@ class ArticleController extends Controller
         ];
     }
 
-    /** Top 40 tags by published article count. */
     private function popularTags(): array
     {
         return Tag::query()
@@ -52,7 +51,6 @@ class ArticleController extends Controller
             ->all();
     }
 
-    /** Top 5 articles by love score. */
     private function topArticles(): array
     {
         return Article::query()
@@ -68,21 +66,23 @@ class ArticleController extends Controller
             ->all();
     }
 
-    // -------------------------------------------------------------------------
-    // Actions
-    // -------------------------------------------------------------------------
-
-    public function index(Request $request): Response
+    private function buildList(Request $request, string $sort): Response
     {
         $tag    = $request->query('tag');
         $search = $request->query('search');
 
-        $articles = Article::query()
+        $query = Article::query()
             ->with('tags')
             ->published()
             ->when($tag,    fn ($q) => $q->withTag($tag))
-            ->when($search, fn ($q) => $q->search($search))
-            ->orderByDesc('published_at')
+            ->when($search, fn ($q) => $q->search($search));
+
+        $query = match ($sort) {
+            'popular' => $query->orderByDesc('love')->orderByDesc('published_at'),
+            default   => $query->orderByDesc('published_at'),
+        };
+
+        $articles = $query
             ->paginate(20)
             ->withQueryString()
             ->through(fn (Article $a) => $this->formatArticle($a));
@@ -91,18 +91,57 @@ class ArticleController extends Controller
             'articles'    => $articles,
             'popularTags' => $this->popularTags(),
             'topArticles' => $this->topArticles(),
-            'filters'     => [
-                'tag'    => $tag,
-                'search' => $search,
-            ],
+            'sort'        => $sort,
+            'filters'     => ['tag' => $tag, 'search' => $search],
+        ]);
+    }
+
+    // -------------------------------------------------------------------------
+    // Actions
+    // -------------------------------------------------------------------------
+
+    public function index(Request $request): Response
+    {
+        return $this->buildList($request, 'newest');
+    }
+
+    public function popular(Request $request): Response
+    {
+        return $this->buildList($request, 'popular');
+    }
+
+
+    public function tagged(): Response
+    {
+        $tags = Tag::query()
+            ->withCount(['articles' => fn ($q) => $q->where('published', true)])
+            ->having('articles_count', '>', 0)
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Tag $t) => [
+                'name'  => $t->name,
+                'slug'  => $t->slug,
+                'count' => $t->articles_count,
+            ])
+            ->all();
+
+        return Inertia::render('Tagged', [
+            'tags'        => $tags,
+            'popularTags' => $this->popularTags(),
+            'topArticles' => $this->topArticles(),
+            'sort'        => 'tagged',
         ]);
     }
 
     public function show(Article $article): Response
     {
+
+        $article->load('tags');
+        
+        $formatted = $this->formatArticle($article);
+        $formatted['body'] = $article->body; // full body for single page
         $article->load('tags');
 
-        // Prev: next older published article (stable tiebreak by id)
         $prev = Article::query()
             ->published()
             ->where(fn ($q) => $q
@@ -116,7 +155,6 @@ class ArticleController extends Controller
             ->orderByDesc('id')
             ->first();
 
-        // Next: next newer published article (stable tiebreak by id)
         $next = Article::query()
             ->published()
             ->where(fn ($q) => $q
@@ -130,18 +168,17 @@ class ArticleController extends Controller
             ->orderBy('id')
             ->first();
 
-        // Related: same tags, excluding self, up to 6
         $tagIds  = $article->tags->pluck('id');
         $related = Article::query()
             ->published()
             ->where('id', '!=', $article->id)
             ->whereHas('tags', fn ($q) => $q->whereIn('tags.id', $tagIds))
             ->orderByDesc('published_at')
-            ->limit(5)
+            ->limit(6)
             ->get();
 
         return Inertia::render('ArticleView', [
-            'article' => $this->formatArticle($article),
+            'article' => $formatted,
 
             'prevArticle' => $prev ? [
                 'id'    => $prev->id,
@@ -163,6 +200,55 @@ class ArticleController extends Controller
 
             'popularTags' => $this->popularTags(),
             'topArticles' => $this->topArticles(),
+        ]);
+    }
+
+
+    public function archive(Request $request): Response
+    {
+        $selectedYear  = $request->query('year')  ? (int) $request->query('year')  : null;
+        $selectedMonth = $request->query('month') ? (int) $request->query('month') : null;
+
+        // Build year/month tree from published articles
+        $archive = Article::query()
+            ->published()
+            ->selectRaw('YEAR(published_at) as year, MONTH(published_at) as month, COUNT(*) as count')
+            ->groupByRaw('YEAR(published_at), MONTH(published_at)')
+            ->orderByRaw('YEAR(published_at) DESC, MONTH(published_at) ASC')
+            ->get()
+            ->groupBy('year')
+            ->map(fn ($months, $year) => [
+                'year'   => (int) $year,
+                'months' => $months->map(fn ($m) => [
+                    'month' => (int) $m->month,
+                    'count' => (int) $m->count,
+                ])->values()->all(),
+            ])
+            ->values()
+            ->all();
+
+        // Articles query — when year selected, month optional
+        $articles = null;
+        if ($selectedYear) {
+            $articles = Article::query()
+                ->with('tags')
+                ->published()
+                ->whereYear('published_at', $selectedYear)
+                ->when($selectedMonth, fn ($q) => $q->whereMonth('published_at', $selectedMonth))
+                ->orderByDesc('published_at')
+                ->paginate(20)
+                ->withQueryString()
+                ->through(fn (Article $a) => $this->formatArticle($a));
+        }
+
+        return Inertia::render('Archive', [
+            'archive'       => $archive,
+            'articles'      => $articles ?? ['data' => [], 'prev_page_url' => null, 'next_page_url' => null],
+            'selectedYear'  => $selectedYear,
+            'selectedMonth' => $selectedMonth,
+            'popularTags'   => $this->popularTags(),
+            'topArticles'   => $this->topArticles(),
+            'sort'          => 'archive',
         ]);
     }
 

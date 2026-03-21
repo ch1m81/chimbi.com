@@ -28,13 +28,21 @@
         <div
             class="article-title relative font-['Ubuntu'] capitalize text-xl leading-normal sm:-left-18 sm:top-8 top:1 py-2 px-5 left-0"
         >
-            <a
+            <Link
                 :href="`/view/${article.id}/${article.slug}`"
                 class="align-text-top text-[#ebe5cb] hover:text-[#c3e062] hover:no-underline"
             >
                 {{ article.title }}
-            </a>
+            </Link>
         </div>
+
+        <!-- Edit button (admin only) -->
+        <a
+            v-if="isAdmin"
+            :href="`/chimbi/edit/${article.id}`"
+            class="absolute top-1 right-8 z-10 text-xs px-2 py-0.5 bg-[#4f4943] hover:bg-[#c3e062] hover:text-[#2a2820] rounded font-['Ubuntu'] no-underline text-[#ebe5cb]"
+            >✎ edit</a
+        >
 
         <!-- Date stamp -->
         <div
@@ -61,8 +69,12 @@
             </span>
         </div>
 
-        <!-- YouTube embed -->
-        <div v-if="article.youtube_code" class="article-body">
+        <!-- YouTube embed (list view only) -->
+        <div
+            v-if="article.youtube_code && !singleView"
+            id="article-body"
+            class="article-body"
+        >
             <iframe
                 :src="`https://www.youtube.com/embed/${article.youtube_code}`"
                 frameborder="0"
@@ -73,15 +85,20 @@
             ></iframe>
         </div>
 
-        <!-- Body HTML (Vimeo / Coub / other embeds) -->
+        <!-- Full body HTML (single view shows everything, list view shows extracted iframe) -->
         <div
             v-else-if="article.body"
+            id="article-body"
             class="article-body"
             v-html="article.body"
         ></div>
 
         <!-- Local thumbnail -->
-        <div v-else-if="article.thumbnail" class="article-body">
+        <div
+            v-else-if="article.thumbnail"
+            id="article-body"
+            class="article-body"
+        >
             <img
                 :src="`/slike/slike_post/${article.thumbnail}`"
                 :alt="article.title"
@@ -91,7 +108,11 @@
         </div>
 
         <!-- External thumbnail fallback -->
-        <div v-else-if="article.thumbnail_url" class="article-body">
+        <div
+            v-else-if="article.thumbnail_url"
+            id="article-body"
+            class="article-body"
+        >
             <img
                 :src="article.thumbnail_url"
                 :alt="article.title"
@@ -105,12 +126,12 @@
             v-if="article.tags.length"
             class="article-tags static md:absolute text-left md:text-right font-['Ubuntu'] text-m text-[#ebe5cb] bottom-20 lg:-left-90 -left-56 w-full md:w-3xs lg:w-xs px-2 md:px-0"
         >
-            <a
+            <Link
                 v-for="tag in article.tags.slice(0, 10)"
                 :key="tag.slug"
                 :href="`/?tag=${tag.slug}`"
                 class="tag-link inline-block m-0.5 py-1 pl-8 pr-3 rounded text-[#ebe5cb]! hover:text-[#504d48]! hover:bg-[#c3e062]! hover:no-underline! hover:rounded-none"
-                >{{ tag.name }}</a
+                >{{ tag.name }}</Link
             >
         </div>
 
@@ -124,10 +145,10 @@
                     <div
                         class="read-more-btn w-60 py-4 ml-auto mr-8 font-['Reenie_Beanie'] text-4xl bg-[#4f4943]"
                     >
-                        <a
+                        <Link
                             :href="`/view/${article.id}/${article.slug}`"
                             class="text-[#c3e062] hover:underline"
-                            >read more...</a
+                            >read more...</Link
                         >
                     </div>
                 </div>
@@ -137,13 +158,15 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { Link, usePage } from "@inertiajs/vue3";
+import { computed, ref } from "vue";
 
 const props = defineProps({
     article: Object,
     singleView: { type: Boolean, default: false },
 });
 
+const isAdmin = computed(() => usePage().props.isAdmin);
 const currentLove = ref(props.article.love);
 const hasVoted = ref(false);
 const isBumping = ref(false);
@@ -213,15 +236,14 @@ function onImgError(e) {
 }
 
 /* ── Love icon (sprite) ─────────────────────────────────────────────────── */
-/* ── Love icon (sprite) ─────────────────────────────────────────────────── */
 .love-icon {
-    background: url("/slike/ikonice/ruka_on.png") no-repeat 0 0 / 24px 48px; /* was 24px 48px */
-    width: 48px; /* was w-6 = 24px */
-    height: 24px; /* was h-6 = 24px */
+    background: url("/slike/ikonice/ruka_on.png") no-repeat 0 0 / 24px 48px;
+    width: 48px;
+    height: 24px;
 }
 .love-btn:hover .love-icon,
 .love-btn.voted .love-icon {
-    background-position: 0 -24px; /* was 0 -24px, must match half of sprite height */
+    background-position: 0 -24px;
 }
 .love-btn.voted {
     opacity: 0.7;
@@ -233,7 +255,7 @@ function onImgError(e) {
     height: 40px;
     padding: 9px 2px 0 0;
     top: -42px;
-    left: 28px; /* push bubble further RIGHT */
+    left: 28px;
 }
 
 /* ── Title bar (sprite bg) ──────────────────────────────────────────────── */
@@ -281,14 +303,12 @@ function onImgError(e) {
 }
 
 /* ── Tags (sprite bg) ───────────────────────────────────────────────────── */
-
 .tag-link {
     background: url("/slike/ikonice/tag.png") no-repeat 4px center #4f4943;
 }
 
 /* ── Read more button ───────────────────────────────────────────────────── */
 .read-more-btn {
-    /* padding: 5px 20px 20px 0; */
     border: 1px solid #67625b;
     border-right-color: #353535;
     border-bottom: 2px solid #353535;

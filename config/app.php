@@ -122,5 +122,11 @@ return [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
+    
+    # Admin Pass
+    'admin_password' => env('ADMIN_PASSWORD', 'chimbi'),
+
+    # Google Analytics
+    'ga_id' => env('GA_MEASUREMENT_ID'),
 
 ];

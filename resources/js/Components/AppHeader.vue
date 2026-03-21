@@ -87,12 +87,12 @@
         >
             <!-- Logo -->
             <div class="logo-wrap shrink-0 mt-6 ml-10 lg:mt-10 lg:ml-20">
-                <a href="/"
+                <Link href="/"
                     ><img
                         :src="'/slike/logo.png'"
                         alt="chimbi"
                         class="logo-img"
-                /></a>
+                /></Link>
             </div>
 
             <!-- Nav: right of logo on lg, stacked below on smaller -->
@@ -100,11 +100,23 @@
                 class="nav-wrap flex self-end justify-start sm:justify-end shrink grow mt-3 sm:mt-12 sm:ml-0 mr-10 sm:mr-0 z-99 pr-4"
             >
                 <ul class="nav-list">
-                    <li class="nav1"><a href="/popular/"></a></li>
-                    <li class="nav2"><a href="/"></a></li>
-                    <li class="nav3"><a href="/tagged/"></a></li>
-                    <li class="nav4"><a href="/"></a></li>
-                    <li class="nav5"><a href="/archive/"></a></li>
+                    <li
+                        :class="['nav1', { 'nav1-active': sort === 'popular' }]"
+                    >
+                        <Link href="/popular"></Link>
+                    </li>
+                    <li :class="['nav2', { 'nav2-active': sort === 'newest' }]">
+                        <Link href="/"></Link>
+                    </li>
+                    <li :class="['nav3', { 'nav3-active': sort === 'tagged' }]">
+                        <Link href="/tagged"></Link>
+                    </li>
+                    <li class="nav4"><Link href="/"></Link></li>
+                    <li
+                        :class="['nav5', { 'nav5-active': sort === 'archive' }]"
+                    >
+                        <Link href="/archive"></Link>
+                    </li>
                 </ul>
             </nav>
         </div>
@@ -112,11 +124,13 @@
 </template>
 
 <script setup>
-import { router } from "@inertiajs/vue3";
-import { ref } from "vue";
+import { Link, router, usePage } from "@inertiajs/vue3";
+import { computed, ref } from "vue";
 
 const searchInput = ref("");
 const searchOpen = ref(false);
+
+const sort = computed(() => usePage().props.sort ?? "newest");
 
 function doSearch() {
     searchOpen.value = false;
@@ -153,7 +167,6 @@ function doSearch() {
 }
 
 /* ── Search ─────────────────────────────────────────────────────────────── */
-/* desktop sprite background */
 .search-wrap {
     width: 292px;
     height: 36px;
@@ -169,7 +182,6 @@ function doSearch() {
     border: none;
     outline: none;
 }
-/* desktop: fixed width + original margins inside sprite */
 @media (min-width: 640px) {
     .search-input {
         width: 200px;
@@ -189,8 +201,6 @@ function doSearch() {
 }
 
 /* ── Nav list ───────────────────────────────────────────────────────────── */
-
-/* Desktop: original fixed sprite canvas */
 .nav-list {
     list-style: none;
     margin: 0;
@@ -200,10 +210,7 @@ function doSearch() {
     background: url("/slike/meni_putokaz.png") no-repeat left top;
 }
 
-/* Small only: remove canvas bg, stack vertically, scale sprite items down */
 @media (max-width: 425px) {
-    /* Scale the entire nav down proportionally so sprites fit smaller screens.
-       transform-origin: top right keeps it anchored to the right edge. */
     .nav-wrap {
         transform-origin: top right;
         transform: scale(clamp(0.55, calc((100vw - 160px) / 180px), 1));
@@ -258,20 +265,24 @@ function doSearch() {
     margin-left: 39px;
 }
 
-.nav1:hover {
+.nav1:hover,
+.nav1-active {
     background: url("/slike/meni_putokaz.png") no-repeat 0 -150px;
 }
-.nav2:hover {
+.nav2:hover,
+.nav2-active {
     background: url("/slike/meni_putokaz.png") no-repeat 0 -184px;
 }
-.nav3:hover {
+.nav3:hover,
+.nav3-active {
     background: url("/slike/meni_putokaz.png") no-repeat 0 -215px;
     padding-left: 65px;
 }
 .nav4:hover {
     background: url("/slike/meni_putokaz.png") no-repeat 0 -249px;
 }
-.nav5:hover {
+.nav5:hover,
+.nav5-active {
     background: url("/slike/meni_putokaz.png") no-repeat -114px -249px;
 }
 </style>

@@ -21,13 +21,13 @@
                 <div
                     class="flex flex-wrap justify-center mt-5 px-1 pb-5 leading-[1.4] tracking-widest [text-shadow:1px_3px_1px_#4f4943]"
                 >
-                    <a
+                    <Link
                         v-for="tag in shuffledTags"
                         :key="tag.slug"
                         :href="`/?tag=${tag.slug}`"
                         :class="tagSizeClass(tag.count)"
                         class="text-[#ebe5cb]! px-2 hover:bg-[#c3e062] hover:text-[#4f4943]! hover:no-underline! hover:z-10 hover:text-shadow-none"
-                        >{{ tag.name }}</a
+                        >{{ tag.name }}</Link
                     >
                 </div>
             </div>
@@ -45,10 +45,10 @@
                         :key="article.id"
                         class="border-t border-t-[#5B564F] border-b border-b-[#35312D] first:border-t-0 last:border-b-0"
                     >
-                        <a
+                        <Link
                             :href="`/view/${article.id}/${article.slug}`"
                             class="block px-4 py-3 font-['Ubuntu'] text-md text-[#ebe5cb]! no-underline hover:bg-[#c3e062] hover:text-[#4f4943]! hover:no-underline! hover:text-shadow-none"
-                            >{{ article.title }}</a
+                            >{{ article.title }}</Link
                         >
                     </li>
                 </ul>
@@ -67,10 +67,10 @@
                         :key="article.id"
                         class="border-t border-t-[#5B564F] border-b border-b-[#35312D] first:border-t-0 last:border-b-0"
                     >
-                        <a
+                        <Link
                             :href="`/view/${article.id}/${article.slug}`"
                             class="block px-4 py-3 font-['Ubuntu'] text-md text-[#ebe5cb]! no-underline hover:bg-[#c3e062] hover:text-[#4f4943]! hover:no-underline! hover:text-shadow-none"
-                            >{{ article.title }}</a
+                            >{{ article.title }}</Link
                         >
                     </li>
                 </ul>
@@ -130,6 +130,7 @@
 </template>
 
 <script setup>
+import { Link } from "@inertiajs/vue3";
 import { computed } from "vue";
 
 const props = defineProps({

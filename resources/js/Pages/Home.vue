@@ -1,4 +1,6 @@
 <template>
+    <AppHead />
+
     <!-- Top accent line: always full viewport width -->
     <div class="fixed top-0 left-0 w-full h-2.5 bg-[#383838] z-50"></div>
 
@@ -69,6 +71,7 @@
 
 <script setup>
 import AppFooter from "@/Components/AppFooter.vue";
+import AppHead from "@/Components/AppHead.vue";
 import AppHeader from "@/Components/AppHeader.vue";
 import AppPagination from "@/Components/AppPagination.vue";
 import ArticleCard from "@/Components/ArticleCard.vue";

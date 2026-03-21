@@ -8,7 +8,7 @@
                     left center;
             "
         >
-            <a
+            <Link
                 :href="links.prev"
                 class="text-[#c3e062] hover:no-underline! flex flex-col min-w-0 max-w-full overflow-hidden"
             >
@@ -21,7 +21,7 @@
                     class="title-span block text-md text-[#ebe5cb] capitalize leading-tight whitespace-nowrap overflow-hidden text-ellipsis max-w-full"
                     >{{ titles.prev }}</span
                 >
-            </a>
+            </Link>
         </div>
         <div v-else></div>
 
@@ -33,7 +33,7 @@
                     right center;
             "
         >
-            <a
+            <Link
                 :href="links.next"
                 class="text-[#c3e062] hover:no-underline! flex flex-col items-end min-w-0 max-w-full overflow-hidden"
             >
@@ -46,13 +46,14 @@
                     class="title-span block text-md text-[#ebe5cb] capitalize leading-tight whitespace-nowrap overflow-hidden text-ellipsis max-w-full"
                     >{{ titles.next }}</span
                 >
-            </a>
+            </Link>
         </div>
         <div v-else></div>
     </div>
 </template>
 
 <script setup>
+import { Link } from "@inertiajs/vue3";
 defineProps({
     links: {
         type: Object,
