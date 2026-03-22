@@ -1,9 +1,9 @@
 <template>
     <!-- Card wrapper -->
-    <article class="article-card relative pb-px first:-mt-6">
+    <article class="article-card relative pb-px first:-mt-6 cursor-pointer">
         <!-- Vote button -->
         <div
-            class="vote-container hidden md:flex md:absolute font-['Ubuntu'] text-md font-extrabold top-28 -left-37 items-center justify-center"
+            class="vote-container hidden md:flex md:absolute font-['Ubuntu'] text-md font-extrabold top-28 -left-37 items-center justify-center w-37 h-58"
         >
             <a
                 href="#"
@@ -26,7 +26,7 @@
 
         <!-- Title bar -->
         <div
-            class="article-title relative font-['Ubuntu'] capitalize text-xl leading-normal sm:-left-18 sm:top-8 top:1 py-2 px-5 left-0"
+            class="article-title relative font-['Ubuntu'] capitalize text-xl leading-normal sm:-left-18 sm:top-8 top:1 py-2 px-5 left-0 w-[90%] h-14"
         >
             <Link
                 :href="`/view/${article.id}/${article.slug}`"
@@ -40,13 +40,13 @@
         <a
             v-if="isAdmin"
             :href="`/chimbi/edit/${article.id}`"
-            class="absolute top-1 right-8 z-10 text-xs px-2 py-0.5 bg-[#4f4943] hover:bg-[#c3e062] hover:text-[#2a2820] rounded font-['Ubuntu'] no-underline text-[#ebe5cb]"
+            class="absolute top-1 right-8 z-10 text-sm p-2 bg-[#4f4943] hover:bg-[#c3e062] hover:text-[#2a2820] rounded font-['Ubuntu'] no-underline text-[#ebe5cb]"
             >✎ edit</a
         >
 
         <!-- Date stamp -->
         <div
-            class="article-date {{ article.published_at }} px-2 py-1 sm:top-9 -top-1 xl:-right-4 right-0 absolute text-[#ebe5cb] font-['Ubuntu'] text-l leading-normal"
+            class="article-date {{ article.published_at }} px-2 py-1 sm:top-9 -top-1 xl:-right-4 right-0 absolute text-[#ebe5cb] font-['Ubuntu'] text-l leading-normal h-8"
         >
             {{ article.published_at }}
         </div>
@@ -54,7 +54,7 @@
         <!-- Source URL -->
         <div
             v-if="article.source_url"
-            class="max-w-full pt-14 px-16 pb-2 font-['Reenie_Beanie'] text-2xl"
+            class="max-w-full pt-10 px-16 pb-2 font-['Reenie_Beanie'] text-3xl"
         >
             <span
                 >Found on:
@@ -124,7 +124,7 @@
         <!-- Tags -->
         <div
             v-if="article.tags.length"
-            class="article-tags static md:absolute text-left md:text-right font-['Ubuntu'] text-m text-[#ebe5cb] bottom-20 lg:-left-90 -left-56 w-full md:w-3xs lg:w-xs px-2 md:px-0"
+            class="article-tags static md:absolute text-left md:text-right md:-left-1/3 font-['Ubuntu'] text-base text-[#ebe5cb] bottom-20 lg:-left-90 -left-56 w-full md:w-1/3 lg:w-xs px-2 md:px-0"
         >
             <Link
                 v-for="tag in article.tags.slice(0, 10)"
@@ -143,7 +143,7 @@
             <div class="overflow-hidden border-b border-[#4f4943] text-center">
                 <div class="relative h-16 overflow-hidden read-more-slider">
                     <div
-                        class="read-more-btn w-60 py-4 ml-auto mr-8 font-['Reenie_Beanie'] text-4xl bg-[#4f4943]"
+                        class="read-more-btn w-60 py-4 ml-auto mr-8 font-['Reenie_Beanie'] text-4xl bg-[#4f4943] border border-[#67625b] border-r-[#353535] border-b-[#353535] rounded-lg"
                     >
                         <Link
                             :href="`/view/${article.id}/${article.slug}`"
@@ -225,14 +225,11 @@ function onImgError(e) {
 }
 .article-card:hover {
     background-color: rgba(0, 0, 0, 0.05);
-    cursor: pointer;
 }
 
 /* ── Vote container (sprite bg) ─────────────────────────────────────────── */
 .vote-container {
     background: url("/slike/pozadina_vote.png") no-repeat right;
-    width: 110px;
-    height: 179px;
 }
 
 /* ── Love icon (sprite) ─────────────────────────────────────────────────── */
@@ -261,14 +258,11 @@ function onImgError(e) {
 /* ── Title bar (sprite bg) ──────────────────────────────────────────────── */
 .article-title {
     background: url("/slike/pozadina_naslov.png") no-repeat;
-    height: 37px;
-    width: 90%;
 }
 
 /* ── Date stamp (sprite bg) ─────────────────────────────────────────────── */
 .article-date {
     background: url("/slike/datum.png") no-repeat right;
-    height: 23px;
 }
 
 /* ── Body ───────────────────────────────────────────────────────────────── */
@@ -305,14 +299,6 @@ function onImgError(e) {
 /* ── Tags (sprite bg) ───────────────────────────────────────────────────── */
 .tag-link {
     background: url("/slike/ikonice/tag.png") no-repeat 4px center #4f4943;
-}
-
-/* ── Read more button ───────────────────────────────────────────────────── */
-.read-more-btn {
-    border: 1px solid #67625b;
-    border-right-color: #353535;
-    border-bottom: 2px solid #353535;
-    border-radius: 5px;
 }
 
 /* ── Responsive: small screens (<640px) ────────────────────────────────── */
