@@ -4,7 +4,7 @@
         <div
             class="bg-[#383838] border-b border-[#4f4943] px-6 py-6 flex items-center justify-between sticky top-0 z-40"
         >
-            <div class="flex items-center gap-4 min-w-0">
+            <div class="flex items-center gap-4 min-w-0 w-1/3">
                 <!-- Home -->
                 <Link
                     href="/"
@@ -22,26 +22,29 @@
                 <span class="text-[#6b6459]">/</span>
                 <span class="text-2xl text-shadow-sm text-mauve-400 truncate">{{
                     mode === "create"
-                        ? "🧩 New Article"
-                        : "👾 Edit: " + form.title
+                        ? "💡 New Article"
+                        : "✨ Edit: " + form.title
                 }}</span>
                 <a
                     v-if="mode === 'edit' && article"
                     :href="`/view/${article.id}/${article.slug}`"
                     target="_blank"
                     rel="noopener"
-                    class="text-sm text-[#c3e062] hover:underline shrink-0"
+                    class="text-xl text-[#c3e062] hover:underline shrink-0 bg-[#4f4943] px-4 py-2 rounded-sm border"
                     title="View article"
-                    >🔗 view</a
+                    >🗨️ view article</a
                 >
             </div>
-            <div class="flex items-center gap-3 shrink-0">
+            <div class="flex items-center gap-3 w-1/5 justify-end">
                 <!-- Dirty indicator -->
-                <span
-                    v-if="isDirty && !saved"
-                    class="text-yellow-400 text-sm hidden sm:block"
-                    >● unsaved</span
-                >
+                <div v-if="isDirty && !saved" class="flex items-center">
+                    <span
+                        class="animate-ping rounded-full bg-yellow-400 opacity-75 w-3 h-3"
+                    ></span>
+                    <span class="text-yellow-400 text-xl hidden sm:block pl-2">
+                        unsaved
+                    </span>
+                </div>
                 <span v-if="saved" class="text-[#c3e062] text-2xl"
                     >✓ Saved</span
                 >
@@ -52,22 +55,23 @@
                         v-if="prevArticle"
                         :href="`/chimbi/edit/${prevArticle.id}`"
                         :title="prevArticle.title"
-                        class="px-2 py-1 text-sm bg-[#4f4943] hover:bg-[#67625b] rounded hover:no-underline text-[#ebe5cb]!"
+                        class="px-6 py-1 text-lg bg-[#4f4943] hover:bg-[#67625b] rounded hover:no-underline text-[#ebe5cb]!"
                         >← prev</Link
                     >
                     <Link
                         v-if="nextArticle"
                         :href="`/chimbi/edit/${nextArticle.id}`"
                         :title="nextArticle.title"
-                        class="px-2 py-1 text-sm bg-[#4f4943] hover:bg-[#67625b] rounded hover:no-underline text-[#ebe5cb]!"
+                        class="px-6 py-1 text-lg bg-[#4f4943] hover:bg-[#67625b] rounded hover:no-underline text-[#ebe5cb]!"
                         >next →</Link
                     >
                 </template>
-
+            </div>
+            <div class="flex items-center gap-3 shrink-0">
                 <button
                     v-if="mode === 'edit'"
                     @click="confirmDelete"
-                    class="border-dotted px-3 py-1 text-lg bg-red-600 hover:bg-red-700 text-white rounded"
+                    class="border-dotted px-3 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
                 >
                     delete 💣
                 </button>
