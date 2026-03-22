@@ -17,23 +17,24 @@ class ArticleController extends Controller
     /** Upgrade http embeds to https and extract first iframe for list view */
     private function upgradeEmbeds(string $html): string
     {
-        return str_replace(
-            ['http://player.vimeo.com', 'http://www.youtube.com', 'http://coub.com'],
-            ['https://player.vimeo.com', 'https://www.youtube.com', 'https://coub.com'],
-            $html
-        );
+        // First fix protocol-relative URLs (//), then fix http://
+        $html = preg_replace('#(src=["\'])\/\/(www\.youtube\.com|player\.vimeo\.com|coub\.com)#', '$1https://$2', $html);
+        $html = preg_replace('#(src=["\'])http://(www\.youtube\.com|player\.vimeo\.com|coub\.com)#', '$1https://$2', $html);
+        return $html;
     }
  
-    private function formatArticle(Article $a): array
+    private function formatArticle(Article $a, bool $fullBody = false): array
     {
         // Extract first iframe from body for list view, upgrade to https
-        $body = null;
-        if ($a->body) {
-            $upgraded = $this->upgradeEmbeds($a->body);
-            if (preg_match('/<iframe[^>]*>.*?<\/iframe>/is', $upgraded, $m)) {
-                $body = $m[0];
+            $body = null;
+            if ($a->body) {
+                $upgraded = $this->upgradeEmbeds($a->body);
+                if ($fullBody) {
+                    $body = $upgraded;
+                } elseif (preg_match('/<iframe[^>]*>.*?<\/iframe>/is', $upgraded, $m)) {
+                    $body = $m[0];
+                }
             }
-        }
  
         return [
             'id'            => $a->id,
@@ -154,10 +155,11 @@ class ArticleController extends Controller
         $article->load('tags');
  
         $formatted = $this->formatArticle($article);
-        // Full body for single page — upgrade all embeds to https
-        $formatted['body'] = $article->body
-            ? $this->upgradeEmbeds($article->body)
-            : null;
+
+            // Clean the full body the same way as list - strip wrapper tags around iframes/imgs
+            $fullBody = preg_replace('/<(?:p|div)[^>]*>\s*(<iframe[^>]*>.*?<\/iframe>)\s*<\/(?:p|div)>/is', '$1', $article->body ?? '');
+            $fullBody = $this->upgradeEmbeds($fullBody);
+            $formatted['body'] = $fullBody;
  
         $prev = Article::query()
             ->published()

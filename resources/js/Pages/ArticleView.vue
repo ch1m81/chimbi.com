@@ -7,27 +7,27 @@
     />
 
     <!-- Top accent line -->
-    <div class="fixed top-0 left-0 w-full h-2.5 bg-[#383838] z-50"></div>
+    <div class="z-50 fixed left-0 top-0 h-2.5 w-full bg-[#383838]"></div>
 
     <!-- Outer shell -->
-    <div class="w-full overflow-x-hidden pt-2.5">
+    <div class="overflow-x-hidden pt-2.5 w-full">
         <!-- Page wrapper: max 1020px, centered -->
-        <div class="max-w-[1020px] mx-auto">
+        <div class="mx-auto max-w-[1020px]">
             <AppHeader />
 
             <div
-                class="ll h-px bg-[#383838] relative w-[200%] left-[-50%]"
+                class="left-[-50%] relative h-px w-[200%] bg-[#383838] ll"
             ></div>
 
-            <div class="min-h-screen mb-10 mt-6">
+            <div class="mb-10 mt-6 min-h-screen">
                 <!-- Same column as Home: 630px pinned to the right -->
-                <main class="w-full sm:w-[630px] ml-auto mr-0">
+                <main class="ml-auto mr-0 w-full sm:w-[630px]">
                     <!-- Article card (read-more slider hidden) -->
                     <ArticleCard :article="article" :single-view="true" />
 
                     <!-- ── Share row ───────────────────────────────────────── -->
-                    <div
-                        class="flex items-center gap-3 font-['Reenie_Beanie'] text-2xl border-b border-[#4f4943] pb-4 mt-1 px-2"
+                    <!-- <div
+                        class="flex gap-3 items-center mt-1 pb-4 px-2 font-['Reenie_Beanie'] text-2xl border-[#4f4943] border-b"
                     >
                         <span class="text-[#ebe5cb] text-xl">share:</span>
                         <a
@@ -61,7 +61,7 @@
                         >
                             {{ copied ? "✓" : "⎘" }}
                         </button>
-                    </div>
+                    </div> -->
 
                     <!-- ── Prev / Next ─────────────────────────────────────── -->
                     <AppPagination

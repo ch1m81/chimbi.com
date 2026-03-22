@@ -2,22 +2,22 @@
     <AppHead />
 
     <!-- Top accent line: always full viewport width -->
-    <div class="fixed top-0 left-0 w-full h-2.5 bg-[#383838] z-50"></div>
+    <div class="z-50 fixed left-0 top-0 h-2.5 w-full bg-[#383838]"></div>
 
     <!-- Outer shell: clips overflow -->
-    <div class="w-full overflow-x-hidden pt-2.5">
+    <div class="overflow-x-hidden pt-2.5 w-full">
         <!-- Page wrapper: max 1020px, centered -->
-        <div class="max-w-[1020px] mx-auto">
+        <div class="mx-auto max-w-[1020px]">
             <AppHeader />
 
             <div
-                class="ll h-px bg-[#383838] relative w-[200%] left-[-50%]"
+                class="left-[-50%] relative h-px w-[200%] bg-[#383838] ll"
             ></div>
 
             <!-- Filter banner -->
             <div
                 v-if="filters.tag || filters.search"
-                class="px-5 py-1.5 bg-[#383838] text-[#ebe5cb] text-sm"
+                class="px-5 py-1.5 text-[#ebe5cb] text-sm bg-[#383838]"
             >
                 <span v-if="filters.tag">
                     Tag:
@@ -29,7 +29,7 @@
                         >"{{ filters.search }}"</strong
                     >
                 </span>
-                <a href="/" class="ml-3 text-[#c3e062] font-bold">× clear</a>
+                <a href="/" class="ml-3 font-bold text-[#c3e062]">× clear</a>
             </div>
 
             <!--
@@ -40,11 +40,11 @@
                 - On medium screens: article fills wrapper minus a smaller left gutter
                 - On small screens: article fills full width (vote/tags hidden via ArticleCard responsive CSS)
             -->
-            <div class="min-h-screen mb-10 mt-6">
-                <main class="w-full sm:w-[630px] ml-auto mr-0">
+            <div class="mb-10 mt-6 min-h-screen">
+                <main class="ml-auto mr-0 w-full sm:w-[630px]">
                     <div
                         v-if="articles.data.length === 0"
-                        class="py-20 pl-5 font-['Reenie_Beanie'] text-3xl text-[#ebe5cb]"
+                        class="pl-5 py-20 font-['Reenie_Beanie'] text-3xl text-[#ebe5cb]"
                     >
                         <span>No articles found.</span>
                     </div>

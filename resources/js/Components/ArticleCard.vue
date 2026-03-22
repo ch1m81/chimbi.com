@@ -384,3 +384,27 @@ function onImgError(e) {
     animation: bump 0.35s ease;
 }
 </style>
+<style>
+.article-body iframe {
+    display: block;
+    margin: auto;
+    border: 10px solid #524d47;
+    max-width: 100%;
+}
+.article-body img {
+    max-width: 100%;
+    height: auto !important;
+    display: block;
+    margin: 20px auto;
+    border: 10px solid #524d47;
+}
+@media (max-width: 639px) {
+    .article-body iframe[src*="youtube.com"],
+    .article-body iframe[src*="youtu.be"],
+    .article-body iframe[src*="vimeo.com"] {
+        width: 100% !important;
+        height: auto !important;
+        aspect-ratio: 16 / 9;
+    }
+}
+</style>

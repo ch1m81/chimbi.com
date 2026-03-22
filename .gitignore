@@ -23,3 +23,6 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 /public/slike
+!public/build
+!public/build/**
+chimbi_export.sql
