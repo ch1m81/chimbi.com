@@ -124,7 +124,7 @@
         <!-- Tags -->
         <div
             v-if="article.tags.length"
-            class="article-tags static md:absolute text-left md:text-right md:-left-1/3 font-['Ubuntu'] text-base text-[#ebe5cb] bottom-20 lg:-left-90 -left-56 w-full md:w-1/3 lg:w-xs px-2 md:px-0"
+            class="article-tags static md:absolute text-left md:text-right md:-left-1/3 font-['Ubuntu'] text-base text-[#ebe5cb] bottom-15 lg:-left-90 -left-56 w-full md:w-1/3 lg:w-xs px-2 md:px-0"
         >
             <Link
                 v-for="tag in article.tags.slice(0, 10)"
@@ -377,10 +377,13 @@ function onImgError(e) {
     border: 10px solid #524d47;
     max-width: 100%;
 }
+
+.article-body iframe + p {
+    margin-top: 30px;
+    margin-bottom: 30px;
+}
 .article-body img {
     max-width: 100%;
-    height: auto !important;
-    display: block;
     margin: 20px auto;
     border: 10px solid #524d47;
 }
