@@ -235,38 +235,18 @@ public function fetchMeta(Request $request)
         // Reddit — use JSON API
         if (preg_match('/reddit\.com\/r\/[^\/]+\/comments\//', $url)) {
             $jsonUrl = rtrim(preg_replace('/\?.*$/', '', $url), '/') . '/.json';
-            try {
-                $ctx = stream_context_create(['http' => [
-                    'timeout'    => 5,
-                    'user_agent' => 'Mozilla/5.0 (compatible; Chimbi/1.0)',
-                ]]);
-                $json = @file_get_contents($jsonUrl, false, $ctx);
-                if ($json) {
-                    $data     = json_decode($json, true);
-                    $post     = $data[0]['data']['children'][0]['data'] ?? [];
-                    $title    = $post['title'] ?? null;
-                    $thumb    = null;
-
-                    // Get highest res preview image if available
-                    $previews = $post['preview']['images'][0]['resolutions'] ?? [];
-                    if ($previews) {
-                        $thumb = html_entity_decode(end($previews)['url']);
-                    } else {
-                        // Fallback to direct URL if it's an image
-                        $dest = $post['url_overridden_by_dest'] ?? null;
-                        if ($dest && preg_match('/\.(jpg|jpeg|png|gif|webp)/i', $dest)) {
-                            $thumb = $dest;
-                        }
-                    }
-
-                    return response()->json([
-                        'title'        => $title,
-                        'description'  => $post['selftext'] ?? null,
-                        'thumbnail_url'=> $thumb,
-                        'youtube_code' => null,
-                    ]);
-                }
-            } catch (\Throwable) {}
+            $ctx = stream_context_create([...]);
+            $json = @file_get_contents($jsonUrl, false, $ctx);
+            $data  = json_decode($json, true);
+            $post  = $data[0]['data']['children'][0]['data'] ?? [];
+            return response()->json([
+                'title'        => $post['title'] ?? 'NO TITLE',
+                'description'  => $post['selftext'] ?? null,
+                'thumbnail_url'=> null,
+                'youtube_code' => null,
+                'debug_json'   => substr($json ?? '', 0, 200),
+                'debug_url'    => $jsonUrl,
+            ]);
         }
 
         // Standard fetch for all other URLs

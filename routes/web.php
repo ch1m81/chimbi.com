@@ -39,3 +39,13 @@ Route::middleware(AdminAuth::class)->group(function () {
         $tag  = \App\Models\Tag::firstOrCreate(['slug' => $slug], ['name' => $request->name]);
         return response()->json(['id' => $tag->id, 'name' => $tag->name, 'slug' => $tag->slug]);
     })->middleware(AdminAuth::class)->name('admin.tags.create');
+
+    Route::get('/chimbi/test-reddit', function() {
+        $url = 'https://www.reddit.com/r/homelab/comments/1s1bx51/its_always_the_dns/.json';
+        $ctx = stream_context_create(['http' => [
+            'timeout'    => 5,
+            'user_agent' => 'Mozilla/5.0 (compatible; Chimbi/1.0)',
+        ]]);
+        $json = @file_get_contents($url, false, $ctx);
+        return response($json ? substr($json, 0, 500) : 'FAILED');
+    });
