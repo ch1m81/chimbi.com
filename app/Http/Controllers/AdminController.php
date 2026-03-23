@@ -252,10 +252,9 @@ public function fetchMeta(Request $request)
         // Standard fetch for all other URLs
         try {
             $ctx = stream_context_create(['http' => [
-                'timeout'          => 5,
-                'follow_location'  => true,
-                'user_agent'       => 'Mozilla/5.0 (compatible; Chimbi/1.0)',
-            ]]);
+            'timeout'    => 5,
+            'user_agent' => 'Mozilla/5.0 (compatible; Chimbi/1.0)',
+             ]]);
             $html = @file_get_contents($url, false, $ctx);
         } catch (\Throwable) {
             $html = '';
