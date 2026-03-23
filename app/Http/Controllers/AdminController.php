@@ -256,6 +256,9 @@ public function fetchMeta(Request $request)
                         }
                     }
 
+                    return response()->json(['received_url' => $url, 'is_string' => is_string($url)]);
+
+
                     return response()->json([
                         'title'        => $title,
                         'description'  => $post['selftext'] ?? null,
