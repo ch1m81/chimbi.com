@@ -221,7 +221,7 @@ class AdminController extends Controller
         return response()->json($tags);
     }
 
-    public function fetchMeta(Request $request)
+public function fetchMeta(Request $request)
     {
         $request->validate(['url' => 'required|url']);
         $url = $request->url;
@@ -232,7 +232,44 @@ class AdminController extends Controller
             $youtubeCode = $m[1];
         }
 
-        // Fetch page HTML
+        // Reddit — use JSON API
+        if (preg_match('/reddit\.com\/r\/[^\/]+\/comments\//', $url)) {
+            $jsonUrl = rtrim(preg_replace('/\?.*$/', '', $url), '/') . '/.json';
+            try {
+                $ctx = stream_context_create(['http' => [
+                    'timeout'    => 5,
+                    'user_agent' => 'Mozilla/5.0 (compatible; Chimbi/1.0)',
+                ]]);
+                $json = @file_get_contents($jsonUrl, false, $ctx);
+                if ($json) {
+                    $data     = json_decode($json, true);
+                    $post     = $data[0]['data']['children'][0]['data'] ?? [];
+                    $title    = $post['title'] ?? null;
+                    $thumb    = null;
+
+                    // Get highest res preview image if available
+                    $previews = $post['preview']['images'][0]['resolutions'] ?? [];
+                    if ($previews) {
+                        $thumb = html_entity_decode(end($previews)['url']);
+                    } else {
+                        // Fallback to direct URL if it's an image
+                        $dest = $post['url_overridden_by_dest'] ?? null;
+                        if ($dest && preg_match('/\.(jpg|jpeg|png|gif|webp)/i', $dest)) {
+                            $thumb = $dest;
+                        }
+                    }
+
+                    return response()->json([
+                        'title'        => $title,
+                        'description'  => $post['selftext'] ?? null,
+                        'thumbnail_url'=> $thumb,
+                        'youtube_code' => null,
+                    ]);
+                }
+            } catch (\Throwable) {}
+        }
+
+        // Standard fetch for all other URLs
         try {
             $ctx = stream_context_create(['http' => [
                 'timeout'          => 5,

@@ -36,11 +36,17 @@
             </Link>
         </div>
 
+        <span
+            v-if="!article.published && isAdmin"
+            class="absolute top-0 left-0 text-base px-2 mx-auto bg-red-800 text-white font-['Ubuntu'] z-10"
+            >draft - not published yet</span
+        >
+
         <!-- Edit button (admin only) -->
         <a
             v-if="isAdmin"
             :href="`/chimbi/edit/${article.id}`"
-            class="absolute top-1 right-8 z-10 text-sm p-2 bg-[#4f4943] hover:bg-[#c3e062] hover:text-[#2a2820] rounded font-['Ubuntu'] no-underline text-[#ebe5cb]"
+            class="absolute top-0 right-0 z-10 text-base px-2 bg-[#4f4943] hover:bg-[#c3e062] hover:text-[#2a2820]! font-['Ubuntu'] no-underline! text-[#ebe5cb]"
             >✎ edit</a
         >
 
@@ -384,6 +390,8 @@ function onImgError(e) {
 }
 .article-body img {
     max-width: 100%;
+    height: auto !important;
+    display: block;
     margin: 20px auto;
     border: 10px solid #524d47;
 }

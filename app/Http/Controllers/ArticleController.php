@@ -47,6 +47,7 @@ class ArticleController extends Controller
             'love'          => $a->love,
             'body'          => $body,
             'published_at'  => $a->published_at?->format('j M Y'),
+            'published'     => $a->published,
             'tags'          => $a->tags->map(fn (Tag $t) => [
                 'name' => $t->name,
                 'slug' => $t->slug,
@@ -91,7 +92,7 @@ class ArticleController extends Controller
  
         $query = Article::query()
             ->with('tags')
-            ->published()
+            ->when(!session('admin_auth'), fn ($q) => $q->published())  // skip published filter for admin
             ->when($tag,    fn ($q) => $q->withTag($tag))
             ->when($search, fn ($q) => $q->search($search));
  
