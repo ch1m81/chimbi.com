@@ -342,3 +342,4 @@ public function fetchMeta(Request $request)
         'youtube_code' => $youtubeCode,
     ]);
 }
+}
