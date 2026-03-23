@@ -239,9 +239,15 @@ public function fetchMeta(Request $request)
         $redditStatus = null;
 
         try {
-            $response = \Illuminate\Support\Facades\Http::withUserAgent('Mozilla/5.0 (compatible; Chimbi/1.0)')
-                ->timeout(5)
-                ->get($jsonUrl);
+            $response = Http::withHeaders([
+                'User-Agent'      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept'          => 'application/json, text/plain, */*',
+                'Accept-Language' => 'en-US,en;q=0.9',
+                'Accept-Encoding' => 'gzip, deflate, br',
+                'Referer'         => 'https://www.reddit.com/',
+            ])
+            ->timeout(5)
+            ->get($jsonUrl);
 
             $redditStatus = $response->status();
 
