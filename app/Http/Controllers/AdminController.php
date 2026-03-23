@@ -235,7 +235,10 @@ public function fetchMeta(Request $request)
         // Reddit — use JSON API
         if (preg_match('/reddit\.com\/r\/[^\/]+\/comments\//', $url)) {
             $jsonUrl = rtrim(preg_replace('/\?.*$/', '', $url), '/') . '/.json';
-            $ctx = stream_context_create([...]);
+            $ctx = stream_context_create(['http' => [
+                'timeout'    => 5,
+                'user_agent' => 'Mozilla/5.0 (compatible; Chimbi/1.0)',
+            ]]);
             $json = @file_get_contents($jsonUrl, false, $ctx);
             $data  = json_decode($json, true);
             $post  = $data[0]['data']['children'][0]['data'] ?? [];
@@ -252,9 +255,10 @@ public function fetchMeta(Request $request)
         // Standard fetch for all other URLs
         try {
             $ctx = stream_context_create(['http' => [
-            'timeout'    => 5,
-            'user_agent' => 'Mozilla/5.0 (compatible; Chimbi/1.0)',
-             ]]);
+                'timeout'          => 5,
+                'follow_location'  => true,
+                'user_agent'       => 'Mozilla/5.0 (compatible; Chimbi/1.0)',
+            ]]);
             $html = @file_get_contents($url, false, $ctx);
         } catch (\Throwable) {
             $html = '';
