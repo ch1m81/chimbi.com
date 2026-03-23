@@ -222,100 +222,123 @@ class AdminController extends Controller
     }
 
 public function fetchMeta(Request $request)
-    {
-        $request->validate(['url' => 'required|url']);
-        $url = $request->url;
+{
+    $request->validate(['url' => 'required|url']);
+    $url = $request->url;
 
-        // Detect YouTube
-        $youtubeCode = null;
-        if (preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/', $url, $m)) {
-            $youtubeCode = $m[1];
-        }
+    // Detect YouTube
+    $youtubeCode = null;
+    if (preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/', $url, $m)) {
+        $youtubeCode = $m[1];
+    }
 
-        // Reddit — use JSON API
-        if (preg_match('/reddit\.com\/r\/[^\/]+\/comments\//', $url)) {
-            $jsonUrl = rtrim(preg_replace('/[?#].*$/', '', $url), '/') . '/.json';
-            try {
-                $response = \Illuminate\Support\Facades\Http::withUserAgent('Mozilla/5.0 (compatible; Chimbi/1.0)')
-                    ->timeout(5)
-                    ->get($jsonUrl);
+    // Reddit — use JSON API
+    if (preg_match('/reddit\.com\/r\/[^\/]+\/comments\//', $url)) {
+        $jsonUrl = rtrim(preg_replace('/[?#].*$/', '', $url), '/') . '/.json';
+        $redditError = null;
+        $redditStatus = null;
 
-                if ($response->successful()) {
-                    $data = $response->json();
-                    $post = $data[0]['data']['children'][0]['data'] ?? [];
-                    $title = $post['title'] ?? null;
-                    $thumb = null;
-
-                    $previews = $post['preview']['images'][0]['resolutions'] ?? [];
-                    if ($previews) {
-                        $thumb = html_entity_decode(end($previews)['url']);
-                    } else {
-                        $dest = $post['url_overridden_by_dest'] ?? null;
-                        if ($dest && preg_match('/\.(jpg|jpeg|png|gif|webp)/i', $dest)) {
-                            $thumb = $dest;
-                        }
-                    }
-
-                    return response()->json(['received_url' => $url, 'is_string' => is_string($url)]);
-
-
-                    return response()->json([
-                        'title'        => $title,
-                        'description'  => $post['selftext'] ?? null,
-                        'thumbnail_url'=> $thumb,
-                        'youtube_code' => null,
-                    ]);
-                }
-            } catch (\Throwable) {}
-        }
-
-        // Standard fetch for all other URLs
         try {
-            $ctx = stream_context_create(['http' => [
-                'timeout'          => 5,
-                'follow_location'  => true,
-                'user_agent'       => 'Mozilla/5.0 (compatible; Chimbi/1.0)',
-            ]]);
-            $html = @file_get_contents($url, false, $ctx);
-        } catch (\Throwable) {
-            $html = '';
+            $response = \Illuminate\Support\Facades\Http::withUserAgent('Mozilla/5.0 (compatible; Chimbi/1.0)')
+                ->timeout(5)
+                ->get($jsonUrl);
+
+            $redditStatus = $response->status();
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $post = $data[0]['data']['children'][0]['data'] ?? [];
+                $title = $post['title'] ?? null;
+                $thumb = null;
+
+                $previews = $post['preview']['images'][0]['resolutions'] ?? [];
+                if ($previews) {
+                    $thumb = html_entity_decode(end($previews)['url']);
+                } else {
+                    $dest = $post['url_overridden_by_dest'] ?? null;
+                    if ($dest && preg_match('/\.(jpg|jpeg|png|gif|webp)/i', $dest)) {
+                        $thumb = $dest;
+                    }
+                }
+
+                return response()->json([
+                    'matched'      => 'reddit',
+                    'title'        => $title,
+                    'description'  => $post['selftext'] ?? null,
+                    'thumbnail_url'=> $thumb,
+                    'youtube_code' => null,
+                ]);
+            } else {
+                $redditError = 'HTTP ' . $redditStatus . ': ' . substr($response->body(), 0, 200);
+            }
+        } catch (\Throwable $e) {
+            $redditError = $e->getMessage();
         }
 
-        $title       = null;
-        $description = null;
-        $thumbnail   = null;
-
-        if ($html) {
-            // Title
-            if (preg_match('/<meta[^>]+property=["\']og:title["\'][^>]+content=["\'](.*?)["\']/', $html, $m)) {
-                $title = html_entity_decode($m[1], ENT_QUOTES);
-            } elseif (preg_match('/<title[^>]*>(.*?)<\/title>/si', $html, $m)) {
-                $title = html_entity_decode(strip_tags($m[1]), ENT_QUOTES);
-            }
-
-            // Description
-            if (preg_match('/<meta[^>]+property=["\']og:description["\'][^>]+content=["\'](.*?)["\']/', $html, $m)) {
-                $description = html_entity_decode($m[1], ENT_QUOTES);
-            } elseif (preg_match('/<meta[^>]+name=["\']description["\'][^>]+content=["\'](.*?)["\']/', $html, $m)) {
-                $description = html_entity_decode($m[1], ENT_QUOTES);
-            }
-
-            // Thumbnail
-            if (preg_match('/<meta[^>]+property=["\']og:image["\'][^>]+content=["\'](.*?)["\']/', $html, $m)) {
-                $thumbnail = $m[1];
-            }
-        }
-
-        // YouTube thumbnail fallback
-        if ($youtubeCode && !$thumbnail) {
-            $thumbnail = "https://img.youtube.com/vi/{$youtubeCode}/hqdefault.jpg";
-        }
-
+        // Reddit failed — return debug info
         return response()->json([
-            'title'        => $title,
-            'description'  => $description,
-            'thumbnail_url'=> $thumbnail,
-            'youtube_code' => $youtubeCode,
+            'matched'       => 'reddit_failed',
+            'jsonUrl'       => $jsonUrl,
+            'status'        => $redditStatus,
+            'error'         => $redditError,
+            'title'         => null,
+            'description'   => null,
+            'thumbnail_url' => null,
+            'youtube_code'  => null,
         ]);
     }
+
+    // Standard HTML fetch
+    $html = '';
+    $fetchError = null;
+    try {
+        $ctx = stream_context_create(['http' => [
+            'timeout'          => 5,
+            'follow_location'  => true,
+            'user_agent'       => 'Mozilla/5.0 (compatible; Chimbi/1.0)',
+        ]]);
+        $html = @file_get_contents($url, false, $ctx);
+        if ($html === false) $html = '';
+    } catch (\Throwable $e) {
+        $fetchError = $e->getMessage();
+        $html = '';
+    }
+
+    $title       = null;
+    $description = null;
+    $thumbnail   = null;
+
+    if ($html) {
+        if (preg_match('/<meta[^>]+property=["\']og:title["\'][^>]+content=["\'](.*?)["\']/', $html, $m)) {
+            $title = html_entity_decode($m[1], ENT_QUOTES);
+        } elseif (preg_match('/<title[^>]*>(.*?)<\/title>/si', $html, $m)) {
+            $title = html_entity_decode(strip_tags($m[1]), ENT_QUOTES);
+        }
+
+        if (preg_match('/<meta[^>]+property=["\']og:description["\'][^>]+content=["\'](.*?)["\']/', $html, $m)) {
+            $description = html_entity_decode($m[1], ENT_QUOTES);
+        } elseif (preg_match('/<meta[^>]+name=["\']description["\'][^>]+content=["\'](.*?)["\']/', $html, $m)) {
+            $description = html_entity_decode($m[1], ENT_QUOTES);
+        }
+
+        if (preg_match('/<meta[^>]+property=["\']og:image["\'][^>]+content=["\'](.*?)["\']/', $html, $m)) {
+            $thumbnail = $m[1];
+        }
+    }
+
+    if ($youtubeCode && !$thumbnail) {
+        $thumbnail = "https://img.youtube.com/vi/{$youtubeCode}/hqdefault.jpg";
+    }
+
+    $matched = 'standard_html';
+    if ($youtubeCode) $matched = 'youtube';
+
+    return response()->json([
+        'matched'      => $matched,
+        'fetch_error'  => $fetchError,
+        'title'        => $title,
+        'description'  => $description,
+        'thumbnail_url'=> $thumbnail,
+        'youtube_code' => $youtubeCode,
+    ]);
 }
