@@ -499,7 +499,7 @@ const initialForm = {
 };
 
 const form = ref({ ...initialForm });
-const savedForm = ref({ ...initialForm }); // tracks last saved state
+const savedForm = ref({ ...initialForm });
 const useTrim = ref(!!props.article?.body_trim);
 const errors = ref({});
 const saving = ref(false);
@@ -616,6 +616,49 @@ async function fetchMeta() {
     if (!form.value.source_url) return;
     fetching.value = true;
     fetchError.value = "";
+
+    // Reddit — fetch client-side (server IP is blocked by Reddit)
+    if (/reddit\.com\/r\/[^/]+\/comments\//.test(form.value.source_url)) {
+        try {
+            const jsonUrl =
+                form.value.source_url
+                    .replace(/[?#].*$/, "")
+                    .replace(/\/$/, "") + "/.json";
+
+            const res = await fetch(jsonUrl, {
+                headers: { Accept: "application/json" },
+            });
+            const data = await res.json();
+            const post = data[0]?.data?.children[0]?.data ?? {};
+
+            if (post.title && !form.value.title) {
+                form.value.title = post.title;
+                if (slugGenerated.value) autoSlug();
+            }
+
+            // Best preview image
+            const previews = post.preview?.images[0]?.resolutions ?? [];
+            if (previews.length && !form.value.thumbnail_url) {
+                form.value.thumbnail_url = previews[
+                    previews.length - 1
+                ].url.replace(/&amp;/g, "&");
+            } else if (
+                post.url_overridden_by_dest?.match(
+                    /\.(jpg|jpeg|png|gif|webp)/i,
+                ) &&
+                !form.value.thumbnail_url
+            ) {
+                form.value.thumbnail_url = post.url_overridden_by_dest;
+            }
+        } catch {
+            fetchError.value = "Could not fetch Reddit metadata.";
+        } finally {
+            fetching.value = false;
+        }
+        return;
+    }
+
+    // All other URLs — server-side fetch
     try {
         const res = await fetch("/chimbi/fetch-meta", {
             method: "POST",
@@ -697,7 +740,7 @@ async function createAndAddTag() {
     tagSearch.value = "";
 }
 
-// ── AI tag suggestions (via Laravel proxy — no CORS) ────────────────────────
+// ── AI tag suggestions ─────────────────────────────────────────────────────
 async function suggestTags() {
     suggesting.value = true;
     suggestError.value = "";
