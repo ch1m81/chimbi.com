@@ -55,7 +55,9 @@ class Article extends Model
     /** Filter by a single tag slug. */
     public function scopeWithTag(Builder $query, string $tagSlug): Builder
     {
-        return $query->whereHas('tags', fn (Builder $q) =>
+        return $query->whereHas(
+            'tags',
+            fn(Builder $q) =>
             $q->where('slug', $tagSlug)
         );
     }

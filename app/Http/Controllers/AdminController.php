@@ -17,7 +17,7 @@ class AdminController extends Controller
     private function allTags(): array
     {
         return Tag::orderBy('name')->get()
-            ->map(fn (Tag $t) => ['id' => $t->id, 'name' => $t->name, 'slug' => $t->slug])
+            ->map(fn(Tag $t) => ['id' => $t->id, 'name' => $t->name, 'slug' => $t->slug])
             ->all();
     }
 
@@ -96,7 +96,7 @@ class AdminController extends Controller
             'body_trim'    => 'nullable|integer|min:50',
             'source_url'   => 'nullable|url|max:500',
             'youtube_code' => 'nullable|string|max:50',
-            'thumbnail_url'=> 'nullable|string|max:500',
+            'thumbnail_url' => 'nullable|string|max:500',
             'love'         => 'nullable|integer|min:0',
             'published'    => 'boolean',
             'published_at' => 'nullable|date',
@@ -145,7 +145,7 @@ class AdminController extends Controller
             'body_trim'    => 'nullable|integer|min:50',
             'source_url'   => 'nullable|url|max:500',
             'youtube_code' => 'nullable|string|max:50',
-            'thumbnail_url'=> 'nullable|string|max:500',
+            'thumbnail_url' => 'nullable|string|max:500',
             'love'         => 'nullable|integer|min:0',
             'published'    => 'boolean',
             'published_at' => 'nullable|date',
@@ -212,7 +212,7 @@ class AdminController extends Controller
 
         $tags = Tag::whereIn('name', $names)
             ->get()
-            ->map(fn (Tag $t) => ['id' => $t->id, 'name' => $t->name, 'slug' => $t->slug])
+            ->map(fn(Tag $t) => ['id' => $t->id, 'name' => $t->name, 'slug' => $t->slug])
             ->all();
 
         return response()->json($tags);
@@ -274,7 +274,7 @@ class AdminController extends Controller
         return response()->json([
             'title'        => $title,
             'description'  => $description,
-            'thumbnail_url'=> $thumbnail,
+            'thumbnail_url' => $thumbnail,
             'youtube_code' => $youtubeCode,
         ]);
     }
