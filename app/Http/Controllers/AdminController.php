@@ -6,6 +6,7 @@ use App\Models\Article;
 use App\Models\Tag;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -14,6 +15,44 @@ class AdminController extends Controller
 {
     // ── Shared helpers ────────────────────────────────────────────────────
 
+    private function sanitizeReturnTo(?string $candidate, Request $request): string
+    {
+        if (!$candidate) {
+            return route('home');
+        }
+
+        $parts = parse_url($candidate);
+        if ($parts === false) {
+            return route('home');
+        }
+
+        $host = $parts['host'] ?? null;
+        if ($host && $host !== $request->getHost()) {
+            return route('home');
+        }
+
+        $path = $parts['path'] ?? '/';
+        if (!str_starts_with($path, '/')) {
+            $path = '/' . ltrim($path, '/');
+        }
+
+        if (str_starts_with($path, '/chimbi')) {
+            return route('home');
+        }
+
+        $query = isset($parts['query']) ? '?' . $parts['query'] : '';
+
+        return $path . $query;
+    }
+
+    private function returnTo(Request $request): string
+    {
+        return $this->sanitizeReturnTo(
+            $request->query('return_to') ?? $request->headers->get('referer'),
+            $request,
+        );
+    }
+
     private function allTags(): array
     {
         return Tag::orderBy('name')->get()
@@ -21,9 +60,21 @@ class AdminController extends Controller
             ->all();
     }
 
+    private function supportsExcerptFields(): bool
+    {
+        static $supports = null;
+
+        if ($supports === null) {
+            $supports = Schema::hasColumns('articles', ['excerpt', 'trim_sentences']);
+        }
+
+        return $supports;
+    }
+
     private function formArticle(Article $article): array
     {
         $article->load('tags');
+        $supportsExcerptFields = $this->supportsExcerptFields();
 
         // Extract first image from body as fallback thumbnail
         $thumbnailUrl = $article->thumbnail_url;
@@ -39,6 +90,8 @@ class AdminController extends Controller
             'slug'          => $article->slug,
             'body'          => $article->getRawOriginal('body') ?? $article->body,
             'body_trim'     => $article->body_trim,
+            'excerpt'       => $supportsExcerptFields ? $article->excerpt : null,
+            'trim_sentences' => $supportsExcerptFields ? $article->trim_sentences : null,
             'source_url'    => $article->source_url,
             'youtube_code'  => $article->youtube_code,
             'thumbnail'     => $article->thumbnail,
@@ -83,7 +136,7 @@ class AdminController extends Controller
             'article'  => null,
             'allTags'  => $this->allTags(),
             'mode'     => 'create',
-            'referrer' => $request->headers->get('referer', '/'),
+            'returnTo' => $this->returnTo($request),
         ]);
     }
 
@@ -94,6 +147,8 @@ class AdminController extends Controller
             'slug'         => 'required|string|max:255|unique:articles,slug',
             'body'         => 'nullable|string',
             'body_trim'    => 'nullable|integer|min:50',
+            'excerpt'      => 'nullable|string',
+            'trim_sentences' => 'nullable|integer|min:1|max:10',
             'source_url'   => 'nullable|url|max:500',
             'youtube_code' => 'nullable|string|max:50',
             'thumbnail_url' => 'nullable|string|max:500',
@@ -103,6 +158,10 @@ class AdminController extends Controller
             'tags'         => 'array',
             'tags.*'       => 'integer|exists:tags,id',
         ]);
+
+        if (!$this->supportsExcerptFields()) {
+            unset($data['excerpt'], $data['trim_sentences']);
+        }
 
         if ($request->hasFile('thumbnail')) {
             $file = $request->file('thumbnail');
@@ -117,7 +176,10 @@ class AdminController extends Controller
         $article = Article::create($data);
         $article->tags()->sync($tags);
 
-        return redirect()->route('admin.edit', $article)
+        return redirect()->route('admin.edit', [
+            'article' => $article,
+            'return_to' => $this->returnTo($request),
+        ])
             ->with('success', 'Article created.');
     }
 
@@ -130,7 +192,7 @@ class AdminController extends Controller
             'article'     => $this->formArticle($article),
             'allTags'     => $this->allTags(),
             'mode'        => 'edit',
-            'referrer'    => $request->headers->get('referer', '/'),
+            'returnTo'    => $this->returnTo($request),
             'prevArticle' => $prev ? ['id' => $prev->id, 'title' => $prev->title] : null,
             'nextArticle' => $next ? ['id' => $next->id, 'title' => $next->title] : null,
         ]);
@@ -143,6 +205,8 @@ class AdminController extends Controller
             'slug'         => 'required|string|max:255|unique:articles,slug,' . $article->id,
             'body'         => 'nullable|string',
             'body_trim'    => 'nullable|integer|min:50',
+            'excerpt'      => 'nullable|string',
+            'trim_sentences' => 'nullable|integer|min:1|max:10',
             'source_url'   => 'nullable|url|max:500',
             'youtube_code' => 'nullable|string|max:50',
             'thumbnail_url' => 'nullable|string|max:500',
@@ -152,6 +216,10 @@ class AdminController extends Controller
             'tags'         => 'array',
             'tags.*'       => 'integer|exists:tags,id',
         ]);
+
+        if (!$this->supportsExcerptFields()) {
+            unset($data['excerpt'], $data['trim_sentences']);
+        }
 
         if ($request->hasFile('thumbnail')) {
             $file = $request->file('thumbnail');
@@ -169,12 +237,39 @@ class AdminController extends Controller
         return back()->with('success', 'Article updated.');
     }
 
-    public function destroy(Article $article)
+    public function destroy(Article $article, Request $request)
     {
+        $deletedTitle = $article->title;
+        $next = Article::where('id', '>', $article->id)->orderBy('id')->first();
+        $prev = Article::where('id', '<', $article->id)->orderByDesc('id')->first();
+        $returnTo = $this->returnTo($request);
+
         $article->tags()->detach();
         $article->delete();
-        return redirect()->route('admin.create')
-            ->with('success', 'Article deleted.');
+
+        if ($next) {
+            return redirect()->route('admin.edit', [
+                'article' => $next,
+                'return_to' => $returnTo,
+            ])
+                ->with('success', 'Article deleted.')
+                ->with('deleted_article_title', $deletedTitle);
+        }
+
+        if ($prev) {
+            return redirect()->route('admin.edit', [
+                'article' => $prev,
+                'return_to' => $returnTo,
+            ])
+                ->with('success', 'Article deleted.')
+                ->with('deleted_article_title', $deletedTitle);
+        }
+
+        return redirect()->route('admin.create', [
+            'return_to' => $returnTo,
+        ])
+            ->with('success', 'Article deleted.')
+            ->with('deleted_article_title', $deletedTitle);
     }
 
     // ── Tag suggestions ────────────────────────────────────────────────────
@@ -231,6 +326,19 @@ class AdminController extends Controller
             $youtubeCode = $m[1];
         }
 
+        $isGenericYoutubeDescription = static function (?string $text): bool {
+            if (!$text) {
+                return false;
+            }
+
+            $normalized = trim(preg_replace('/\s+/u', ' ', mb_strtolower($text)));
+
+            return in_array($normalized, [
+                'auf youtube findest du die angesagtesten videos und tracks. außerdem kannst du eigene inhalte hochladen und mit freunden oder gleich der ganzen welt teilen.',
+                'enjoy the videos and music you love, upload original content, and share it all with friends, family, and the world on youtube.',
+            ], true);
+        };
+
         // Standard HTML fetch
         $html = '';
         try {
@@ -265,6 +373,10 @@ class AdminController extends Controller
             if (preg_match('/<meta[^>]+property=["\']og:image["\'][^>]+content=["\'](.*?)["\']/', $html, $m)) {
                 $thumbnail = $m[1];
             }
+        }
+
+        if ($youtubeCode && $isGenericYoutubeDescription($description)) {
+            $description = null;
         }
 
         if ($youtubeCode && !$thumbnail) {

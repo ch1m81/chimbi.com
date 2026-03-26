@@ -13,6 +13,9 @@ class Article extends Model
         'title',
         'slug',
         'body',
+        'body_trim',
+        'excerpt',
+        'trim_sentences',
         'source_url',
         'thumbnail',
         'youtube_code',
@@ -26,6 +29,8 @@ class Article extends Model
         'published'    => 'boolean',
         'published_at' => 'date',
         'love'         => 'integer',
+        'body_trim'    => 'integer',
+        'trim_sentences' => 'integer',
     ];
 
     // -------------------------------------------------------------------------

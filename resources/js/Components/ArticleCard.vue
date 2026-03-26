@@ -93,11 +93,20 @@
 
         <!-- Full body HTML (single view shows everything, list view shows extracted iframe) -->
         <div
-            v-else-if="article.body"
+            v-else-if="hasRenderableBody"
             id="article-body"
             class="article-body"
-            v-html="article.body"
-        ></div>
+        >
+            <img
+                v-if="showThumbnailWithBody"
+                class="article-thumbnail"
+                :src="bodyThumbnailSrc"
+                :alt="article.title"
+                loading="lazy"
+                @error="onImgError"
+            />
+            <div v-html="article.body"></div>
+        </div>
 
         <!-- Local thumbnail -->
         <div
@@ -106,7 +115,8 @@
             class="article-body"
         >
             <img
-                :src="`/slike/slike_post/${article.thumbnail}`"
+                class="article-thumbnail"
+                :src="localThumbnailSrc"
                 :alt="article.title"
                 loading="lazy"
                 @error="onImgError"
@@ -120,6 +130,7 @@
             class="article-body"
         >
             <img
+                class="article-thumbnail"
                 :src="article.thumbnail_url"
                 :alt="article.title"
                 loading="lazy"
@@ -176,6 +187,35 @@ const isAdmin = computed(() => usePage().props.isAdmin);
 const currentLove = ref(props.article.love);
 const hasVoted = ref(false);
 const isBumping = ref(false);
+const localThumbnailSrc = computed(() =>
+    props.article?.thumbnail ? `/storage/articles/${props.article.thumbnail}` : "",
+);
+const bodyThumbnailSrc = computed(() => {
+    if (props.article?.thumbnail) return localThumbnailSrc.value;
+    if (props.article?.thumbnail_url) return props.article.thumbnail_url;
+    return "";
+});
+const hasRenderableBody = computed(() => {
+    const body = props.article?.body;
+    if (!body) return false;
+
+    const normalized = body
+        .replace(/<!--[\s\S]*?-->/g, "")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/<br\s*\/?>/gi, " ")
+        .replace(/<\/?(p|div|span|section|article)[^>]*>/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const textOnly = normalized.replace(/<[^>]+>/g, "").trim();
+    const hasMedia = /<(img|iframe|video)\b/i.test(normalized);
+
+    return hasMedia || textOnly.length > 0;
+});
+const bodyContainsMedia = computed(() => /<(img|iframe|video)\b/i.test(props.article?.body ?? ""));
+const showThumbnailWithBody = computed(
+    () => !!bodyThumbnailSrc.value && hasRenderableBody.value && !bodyContainsMedia.value,
+);
 
 async function loveArticle() {
     if (hasVoted.value) return;
@@ -298,6 +338,12 @@ function onImgError(e) {
     margin: 20px auto;
     border: 10px solid #524d47;
 }
+.article-body .article-thumbnail {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    box-sizing: border-box;
+}
 .article-body img:hover {
     border-color: #5c5750;
 }
@@ -394,6 +440,12 @@ function onImgError(e) {
     display: block;
     margin: 20px auto;
     border: 10px solid #524d47;
+}
+.article-body .article-thumbnail {
+    width: 100%;
+    max-width: 100%;
+    height: auto !important;
+    box-sizing: border-box;
 }
 @media (max-width: 639px) {
     .article-body iframe[src*="youtube.com"],

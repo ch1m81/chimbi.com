@@ -3,16 +3,19 @@
         <!-- Header bar -->
         <div
             class="bg-[#383838] border-b border-[#4f4943] px-6 py-6 flex items-center justify-between sticky top-0 z-40"
+            :class="
+                deletedNotice
+                    ? 'border-red-500 shadow-[0_0_0_1px_rgba(239,68,68,0.4)]'
+                    : 'border-[#4f4943]'
+            "
         >
             <div class="flex items-center gap-4 min-w-0 w-1/3">
-                <!-- Home -->
                 <Link
                     href="/"
                     class="text-[#ebe5cb]! hover:text-[#c3e062]! hover:no-underline! text-2xl shrink-0"
                     >🏠</Link
                 >
                 <span class="text-[#6b6459]">/</span>
-                <!-- Back -->
                 <button
                     @click="goBack"
                     class="text-[#ebe5cb] hover:text-[#c3e062] text-xl shrink-0"
@@ -27,7 +30,7 @@
                 }}</span>
                 <a
                     v-if="mode === 'edit' && article"
-                    :href="`/view/${article.id}/${article.slug}`"
+                    :href="publicArticleUrl"
                     target="_blank"
                     rel="noopener"
                     class="text-xl text-[#c3e062] hover:underline shrink-0 bg-[#4f4943] px-4 py-2 rounded-sm border"
@@ -35,8 +38,8 @@
                     >🗨️ view article</a
                 >
             </div>
+
             <div class="flex items-center gap-3 w-1/5 justify-end">
-                <!-- Dirty indicator -->
                 <div v-if="isDirty && !saved" class="flex items-center">
                     <span
                         class="animate-ping rounded-full bg-yellow-400 opacity-75 w-3 h-3"
@@ -49,24 +52,24 @@
                     >✓ Saved</span
                 >
 
-                <!-- Prev / Next (edit only) -->
                 <template v-if="mode === 'edit'">
                     <Link
                         v-if="prevArticle"
-                        :href="`/chimbi/edit/${prevArticle.id}`"
+                        :href="adminArticleUrl(prevArticle.id)"
                         :title="prevArticle.title"
                         class="px-6 py-1 text-lg bg-[#4f4943] hover:bg-[#67625b] rounded hover:no-underline text-[#ebe5cb]!"
                         >← prev</Link
                     >
                     <Link
                         v-if="nextArticle"
-                        :href="`/chimbi/edit/${nextArticle.id}`"
+                        :href="adminArticleUrl(nextArticle.id)"
                         :title="nextArticle.title"
                         class="px-6 py-1 text-lg bg-[#4f4943] hover:bg-[#67625b] rounded hover:no-underline text-[#ebe5cb]!"
                         >next →</Link
                     >
                 </template>
             </div>
+
             <div class="flex items-center gap-3 shrink-0">
                 <button
                     v-if="mode === 'edit'"
@@ -82,6 +85,15 @@
                     Logout
                 </button>
             </div>
+        </div>
+
+        <div
+            v-if="deletedNotice"
+            class="max-w-4xl mx-auto mt-4 px-4 py-3 border border-red-500 bg-red-950/60 text-red-100 rounded-sm text-base"
+        >
+            Deleted:
+            <strong class="text-white">{{ deletedNotice }}</strong>
+            This article no longer exists. You are now editing the next available post.
         </div>
 
         <div
@@ -182,29 +194,49 @@
                         placeholder="Markdown content..."
                         class="w-full bg-olive-700 border-olive-400 border-s-4 rounded-sm px-3 py-2 text-base outline-none transition-colors hover:border-[#c3e062] focus:border-[#c3e062] font-mono resize-y"
                     ></textarea>
-                    <!-- Trim option -->
-                    <div class="flex items-center gap-3 mt-2">
-                        <label
-                            class="flex items-center gap-2 text-sm text-[#ebe5cb] cursor-pointer"
-                        >
-                            <input
-                                type="checkbox"
-                                v-model="useTrim"
-                                class="accent-[#c3e062] w-5 h-5"
-                            />
-                            <span class="text-lg"
-                                >Trim body on list page at</span
+                    <div class="mt-3 p-4 bg-[#383838] border border-[#4f4943] rounded-sm">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <label class="field-label mb-0">List Preview Rules</label>
+                            <button
+                                type="button"
+                                @click="insertMoreMarker"
+                                class="px-3 py-1 text-sm bg-[#4f4943] hover:bg-[#67625b] rounded"
                             >
-                        </label>
-                        <input
-                            v-if="useTrim"
-                            v-model.number="form.body_trim"
-                            type="number"
-                            min="50"
-                            max="2000"
-                            class="py-1 text-[#c3e062]"
-                        />
-                        <span v-if="useTrim" class="text-lg">characters</span>
+                                Insert `<!--more-->` marker
+                            </button>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-[#c3e062] mb-1">
+                                    Custom excerpt
+                                </label>
+                                <textarea
+                                    v-model="form.excerpt"
+                                    rows="3"
+                                    placeholder="Optional. If filled, the homepage/list uses this text instead of auto trimming."
+                                    class="w-full bg-olive-700 border-olive-400 border-s-4 rounded-sm px-3 py-2 text-base outline-none transition-colors hover:border-[#c3e062] focus:border-[#c3e062] resize-y"
+                                ></textarea>
+                            </div>
+
+                            <div class="flex items-center gap-3">
+                                <label class="block text-sm text-[#c3e062]">
+                                    Auto trim to
+                                </label>
+                                <input
+                                    v-model.number="form.trim_sentences"
+                                    type="number"
+                                    min="1"
+                                    max="10"
+                                    class="w-20 py-1 px-2 bg-olive-700 border border-olive-400 rounded-sm text-[#ebe5cb]"
+                                />
+                                <span class="text-sm text-[#ebe5cb]">sentences</span>
+                            </div>
+
+                            <div class="text-sm text-[#6b6459] leading-relaxed">
+                                Priority: custom excerpt first, then `<!--more-->` marker, then sentence trim. Existing character trim is kept only as a legacy fallback.
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -426,16 +458,15 @@
                             Full body
                         </button>
                         <button
-                            v-if="useTrim && form.body_trim"
-                            @click="previewMode = 'trimmed'"
+                            @click="previewMode = 'list'"
                             class="px-3 py-1 rounded transition-colors"
                             :class="
-                                previewMode === 'trimmed'
+                                previewMode === 'list'
                                     ? 'bg-[#c3e062] text-[#2a2820] font-bold'
                                     : 'bg-[#4f4943] text-[#ebe5cb]'
                             "
                         >
-                            Trimmed ({{ form.body_trim }} chars)
+                            List preview
                         </button>
                     </div>
                     <button
@@ -445,21 +476,24 @@
                         ✕
                     </button>
                 </div>
-                <div class="px-6 py-4">
-                    <div
-                        class="font-['Ubuntu'] text-xl text-[#ebe5cb] capitalize mb-4 pb-2 border-b border-[#4f4943]"
-                    >
-                        {{ form.title }}
+                <div class="px-4 sm:px-6 py-4">
+                    <div class="w-full pt-2.5">
+                        <div class="max-w-[1020px] mx-auto">
+                            <div class="mb-6 mt-2">
+                                <main class="w-full sm:w-[630px] ml-auto mr-0">
+                                    <ArticleCard
+                                        :article="previewArticle"
+                                        :single-view="previewMode === 'full'"
+                                    />
+                                </main>
+                            </div>
+                        </div>
                     </div>
                     <div
-                        class="text-[#ebe5cb] text-sm leading-relaxed"
-                        v-html="previewContent"
-                    ></div>
-                    <div
-                        v-if="previewMode === 'trimmed' && isTrimmed"
+                        v-if="previewMode === 'list'"
                         class="mt-3 text-[#6b6459] text-xs italic"
                     >
-                        … trimmed at {{ form.body_trim }} characters
+                        {{ listPreviewLabel }}
                     </div>
                 </div>
             </div>
@@ -468,6 +502,7 @@
 </template>
 
 <script setup>
+import ArticleCard from "@/Components/ArticleCard.vue";
 import { Link, router } from "@inertiajs/vue3";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
@@ -476,7 +511,7 @@ const props = defineProps({
     allTags: { type: Array, default: () => [] },
     mode: { type: String, default: "create" },
     flash: { type: Object, default: () => ({}) },
-    referrer: { type: String, default: "/" },
+    returnTo: { type: String, default: "/" },
     prevArticle: { type: Object, default: null },
     nextArticle: { type: Object, default: null },
 });
@@ -486,7 +521,9 @@ const initialForm = {
     title: props.article?.title ?? "",
     slug: props.article?.slug ?? "",
     body: props.article?.body ?? "",
-    body_trim: props.article?.body_trim ?? 300,
+    body_trim: props.article?.body_trim ?? null,
+    excerpt: props.article?.excerpt ?? "",
+    trim_sentences: props.article?.trim_sentences ?? null,
     source_url: props.article?.source_url ?? "",
     youtube_code: props.article?.youtube_code ?? "",
     thumbnail_url: props.article?.thumbnail_url ?? "",
@@ -500,12 +537,13 @@ const initialForm = {
 
 const form = ref({ ...initialForm });
 const savedForm = ref({ ...initialForm });
-const useTrim = ref(!!props.article?.body_trim);
+const sourceBaselineUrl = ref(initialForm.source_url);
 const errors = ref({});
 const saving = ref(false);
 const saved = ref(false);
 const showPreview = ref(false);
 const previewMode = ref("full");
+const copiedPublicUrl = ref(false);
 const tagSearch = ref("");
 const fileInput = ref(null);
 const thumbnailFile = ref(null);
@@ -519,6 +557,25 @@ const suggestedTags = ref([]);
 const isDirty = computed(
     () => JSON.stringify(form.value) !== JSON.stringify(savedForm.value),
 );
+const deletedNotice = computed(
+    () => props.flash?.deletedArticleTitle?.trim?.() || "",
+);
+const publicArticleUrl = computed(() =>
+    props.mode === "edit" && props.article
+        ? `/view/${props.article.id}/${props.article.slug}`
+        : "",
+);
+const headerTitle = computed(() => {
+    if (props.mode === "create") return form.value.title?.trim() || "New Article";
+    return form.value.title?.trim() || `Edit Article #${props.article?.id ?? ""}`;
+});
+const headerListMode = computed(() => {
+    if (form.value.excerpt?.trim()) return "Excerpt";
+    if ((form.value.body ?? "").includes("<!--more-->")) return "Marker";
+    if (form.value.trim_sentences) return `${form.value.trim_sentences} sent.`;
+    if (form.value.body_trim) return "Legacy";
+    return "Full";
+});
 
 function handleBeforeUnload(e) {
     if (isDirty.value && !saved.value) {
@@ -535,10 +592,28 @@ onBeforeUnmount(() =>
 function goBack() {
     if (isDirty.value && !confirm("You have unsaved changes. Leave anyway?"))
         return;
-    if (props.referrer && props.referrer !== window.location.href) {
-        window.location.href = props.referrer;
-    } else {
-        window.history.back();
+    window.location.href = props.returnTo || "/";
+}
+
+function adminArticleUrl(id) {
+    const params = new URLSearchParams();
+    if (props.returnTo) params.set("return_to", props.returnTo);
+    const query = params.toString();
+    return `/chimbi/edit/${id}${query ? `?${query}` : ""}`;
+}
+
+async function copyPublicUrl() {
+    if (!publicArticleUrl.value) return;
+    try {
+        await navigator.clipboard.writeText(
+            `${window.location.origin}${publicArticleUrl.value}`,
+        );
+        copiedPublicUrl.value = true;
+        setTimeout(() => {
+            copiedPublicUrl.value = false;
+        }, 1800);
+    } catch {
+        copiedPublicUrl.value = false;
     }
 }
 
@@ -558,27 +633,104 @@ const renderedBody = computed(() =>
         .replace(/\n/g, "<br>"),
 );
 
-const isTrimmed = computed(
-    () =>
-        useTrim.value &&
-        form.value.body_trim &&
-        (form.value.body ?? "").length > form.value.body_trim,
-);
+function stripHtml(html) {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html ?? "";
+    return (tmp.textContent || tmp.innerText || "").replace(/\s+/g, " ").trim();
+}
 
-const previewContent = computed(() => {
-    if (previewMode.value === "trimmed" && isTrimmed.value) {
-        return (form.value.body ?? "")
-            .slice(0, form.value.body_trim)
-            .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-            .replace(/\*(.*?)\*/g, "<em>$1</em>")
-            .replace(/\n/g, "<br>");
+function trimTextToSentences(text, count) {
+    const normalized = (text ?? "").trim();
+    if (!normalized || !count || count < 1) return "";
+    const matches = normalized.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g) ?? [];
+    return matches
+        .map((sentence) => sentence.trim())
+        .filter(Boolean)
+        .slice(0, count)
+        .join(" ");
+}
+
+function firstMediaOnly(html) {
+    const match = (html ?? "").match(/<(iframe|video)\b[^>]*>[\s\S]*?<\/\1>/i);
+    return match?.[0] ?? "";
+}
+
+const listPreviewHtml = computed(() => {
+    if (form.value.excerpt?.trim()) {
+        return textToHtml(form.value.excerpt);
     }
+
+    if ((form.value.body ?? "").includes("<!--more-->")) {
+        return (form.value.body ?? "").split("<!--more-->")[0].trim();
+    }
+
+    if (form.value.trim_sentences) {
+        return textToHtml(
+            trimTextToSentences(stripHtml(form.value.body), form.value.trim_sentences),
+        );
+    }
+
+    const media = firstMediaOnly(form.value.body);
+    if (media) return media;
+
+    if (form.value.body_trim) {
+        const text = stripHtml(form.value.body);
+        if (!text) return "";
+        const trimmed =
+            text.length > form.value.body_trim
+                ? `${text.slice(0, form.value.body_trim).trim()}...`
+                : text;
+        return textToHtml(trimmed);
+    }
+
     return renderedBody.value;
 });
+
+const listPreviewLabel = computed(() => {
+    if (form.value.excerpt?.trim()) return "Using custom excerpt";
+    if ((form.value.body ?? "").includes("<!--more-->"))
+        return "Using <!--more--> marker";
+    if (form.value.trim_sentences)
+        return `Using first ${form.value.trim_sentences} sentence${form.value.trim_sentences === 1 ? "" : "s"}`;
+    if (firstMediaOnly(form.value.body)) return "Using first embedded media item";
+    if (form.value.body_trim) return `Using legacy ${form.value.body_trim}-character trim`;
+    return "Using full body";
+});
+
+const previewContent = computed(() => {
+    if (previewMode.value === "list") return listPreviewHtml.value;
+    return renderedBody.value;
+});
+const previewArticle = computed(() => ({
+    id: props.article?.id ?? 0,
+    title: form.value.title || "Untitled article",
+    slug: form.value.slug || "preview",
+    body: previewMode.value === "list" ? listPreviewHtml.value : form.value.body,
+    thumbnail: form.value.thumbnail,
+    thumbnail_url: form.value.thumbnail_url,
+    youtube_code: previewMode.value === "list" ? "" : form.value.youtube_code,
+    source_url: form.value.source_url,
+    love: form.value.love ?? 0,
+    published_at: form.value.published_at || "preview",
+    published: form.value.published ?? false,
+    tags: form.value.tags.map((tagId) => {
+        const tag = props.allTags.find((item) => item.id === tagId);
+        return tag
+            ? { name: tag.name, slug: tag.slug }
+            : { name: String(tagId), slug: String(tagId) };
+    }),
+}));
 
 function openPreview() {
     previewMode.value = "full";
     showPreview.value = true;
+}
+
+function insertMoreMarker() {
+    const marker = "\n\n<!--more-->\n\n";
+    form.value.body = form.value.body?.includes("<!--more-->")
+        ? form.value.body
+        : `${form.value.body ?? ""}${marker}`;
 }
 
 const filteredTags = computed(() => {
@@ -611,6 +763,97 @@ watch(
     },
 );
 
+function normalizeUrl(url) {
+    return (url ?? "").trim();
+}
+
+function isSourceReplacement() {
+    return (
+        !!normalizeUrl(form.value.source_url) &&
+        normalizeUrl(form.value.source_url) !== normalizeUrl(sourceBaselineUrl.value)
+    );
+}
+
+function hasGeneratedMediaBody(body) {
+    if (!body?.trim()) return true;
+    return /^\s*(?:<(?:p|div)[^>]*>\s*)?(?:<(?:iframe|video)\b[\s\S]*?<\/(?:iframe|video)>)(?:\s*<\/(?:p|div)>)?\s*$/i.test(
+        body.trim(),
+    );
+}
+
+function setFetchedThumbnail(url) {
+    if (!url) return;
+    thumbnailFile.value = null;
+    form.value.thumbnail = null;
+    form.value.thumbnail_url = url;
+    if (fileInput.value) fileInput.value.value = "";
+}
+
+function escapeHtml(text) {
+    return (text ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function textToHtml(text) {
+    const trimmed = (text ?? "").trim();
+    if (!trimmed) return "";
+
+    return trimmed
+        .split(/\n{2,}/)
+        .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`)
+        .join("\n");
+}
+
+function setFetchedYoutubeBody(code, description = "") {
+    const descriptionHtml = textToHtml(description);
+    form.value.body =
+        `<iframe src="https://www.youtube.com/embed/${code}" frameborder="0" allowfullscreen width="560" height="315"></iframe>` +
+        (descriptionHtml ? `\n${descriptionHtml}` : "");
+}
+
+function applyFetchedContent({ title, description, youtubeCode, thumbnailUrl, mediaBody = "" }) {
+    const replacingSource = isSourceReplacement();
+
+    if (title && (!form.value.title || replacingSource)) {
+        form.value.title = title;
+        if (slugGenerated.value) autoSlug();
+    }
+
+    form.value.youtube_code = youtubeCode ?? "";
+
+    if (thumbnailUrl) {
+        setFetchedThumbnail(thumbnailUrl);
+    } else if (replacingSource) {
+        thumbnailFile.value = null;
+        form.value.thumbnail = null;
+        form.value.thumbnail_url = "";
+        if (fileInput.value) fileInput.value.value = "";
+    }
+
+    if (mediaBody) {
+        form.value.body = mediaBody;
+        return;
+    }
+
+    if (youtubeCode) {
+        setFetchedYoutubeBody(youtubeCode, description);
+        return;
+    }
+
+    if (description && (replacingSource || hasGeneratedMediaBody(form.value.body))) {
+        form.value.body = description;
+        return;
+    }
+
+    if (replacingSource || hasGeneratedMediaBody(form.value.body)) {
+        form.value.body = "";
+    }
+}
+
 // ── URL meta fetch ──────────────────────────────────────────────────────────
 async function fetchMeta() {
     if (!form.value.source_url) return;
@@ -631,25 +874,42 @@ async function fetchMeta() {
             const data = await res.json();
             const post = data[0]?.data?.children[0]?.data ?? {};
 
-            if (post.title && !form.value.title) {
-                form.value.title = post.title;
-                if (slugGenerated.value) autoSlug();
+            // Thumbnail — preview image first, then post.thumbnail fallback
+            const previews = post.preview?.images[0]?.resolutions ?? [];
+            let thumbnailUrl = "";
+            if (previews.length) {
+                thumbnailUrl = previews[previews.length - 1].url.replace(
+                    /&amp;/g,
+                    "&",
+                );
+            } else if (
+                post.url_overridden_by_dest?.match(/\.(jpg|jpeg|png|gif|webp)/i)
+            ) {
+                thumbnailUrl = post.url_overridden_by_dest;
+            } else if (post.thumbnail?.startsWith("http")) {
+                thumbnailUrl = post.thumbnail;
             }
 
-            // Best preview image
-            const previews = post.preview?.images[0]?.resolutions ?? [];
-            if (previews.length && !form.value.thumbnail_url) {
-                form.value.thumbnail_url = previews[
-                    previews.length - 1
-                ].url.replace(/&amp;/g, "&");
-            } else if (
-                post.url_overridden_by_dest?.match(
-                    /\.(jpg|jpeg|png|gif|webp)/i,
-                ) &&
-                !form.value.thumbnail_url
+            // Reddit hosted video — put as <video> tag in body
+            let mediaBody = "";
+            if (
+                post.is_video &&
+                post.media?.reddit_video?.fallback_url
             ) {
-                form.value.thumbnail_url = post.url_overridden_by_dest;
+                const videoUrl = post.media.reddit_video.fallback_url.replace(
+                    /&amp;/g,
+                    "&",
+                );
+                mediaBody = `<video controls width="560" style="max-width:100%">\n  <source src="${videoUrl}" type="video/mp4">\n</video>`;
             }
+
+            applyFetchedContent({
+                title: post.title ?? "",
+                description: post.selftext ?? "",
+                youtubeCode: "",
+                thumbnailUrl,
+                mediaBody,
+            });
         } catch {
             fetchError.value = "Could not fetch Reddit metadata.";
         } finally {
@@ -671,11 +931,12 @@ async function fetchMeta() {
             body: JSON.stringify({ url: form.value.source_url }),
         });
         const data = await res.json();
-        if (data.title && !form.value.title) form.value.title = data.title;
-        if (data.youtube_code) form.value.youtube_code = data.youtube_code;
-        if (data.thumbnail_url && !form.value.thumbnail_url)
-            form.value.thumbnail_url = data.thumbnail_url;
-        if (data.title && slugGenerated.value) autoSlug();
+        applyFetchedContent({
+            title: data.title ?? "",
+            description: data.description ?? "",
+            youtubeCode: data.youtube_code ?? "",
+            thumbnailUrl: data.thumbnail_url ?? "",
+        });
     } catch {
         fetchError.value = "Could not fetch URL metadata.";
     } finally {
@@ -694,6 +955,7 @@ function onFileChange(e) {
 }
 function onThumbnailUrl() {
     thumbnailFile.value = null;
+    form.value.thumbnail = null;
 }
 function clearThumbnail() {
     thumbnailFile.value = null;
@@ -776,9 +1038,13 @@ async function suggestTags() {
 async function save() {
     saving.value = true;
     errors.value = {};
-    if (!useTrim.value) form.value.body_trim = null;
 
     const data = { ...form.value };
+    if (!data.excerpt?.trim()) data.excerpt = null;
+    if (!data.trim_sentences) data.trim_sentences = null;
+    if (data.excerpt || (data.body ?? "").includes("<!--more-->") || data.trim_sentences) {
+        data.body_trim = null;
+    }
     if (thumbnailFile.value) data.thumbnail = thumbnailFile.value;
 
     const options = {
@@ -786,6 +1052,7 @@ async function save() {
         onSuccess: () => {
             saved.value = true;
             savedForm.value = { ...form.value };
+            sourceBaselineUrl.value = form.value.source_url;
             setTimeout(() => (saved.value = false), 3000);
         },
         onError: (e) => {
@@ -799,7 +1066,12 @@ async function save() {
     if (props.mode === "create") {
         router.post("/chimbi/create", data, options);
     } else {
-        router.put(`/chimbi/edit/${props.article.id}`, data, options);
+        // Use POST with _method spoofing for file uploads
+        router.post(
+            `/chimbi/edit/${props.article.id}`,
+            { ...data, _method: "PUT" },
+            options,
+        );
     }
 }
 
@@ -816,6 +1088,111 @@ function doLogout() {
 </script>
 
 <style scoped>
+.admin-btn-primary,
+.admin-btn-secondary,
+.admin-btn-danger,
+.admin-btn-muted,
+.admin-btn-muted-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.5rem;
+    padding: 0.6rem 0.95rem;
+    border-radius: 0.4rem;
+    border: 1px solid #4f4943;
+    font-size: 0.95rem;
+    transition:
+        background-color 0.15s ease,
+        color 0.15s ease,
+        border-color 0.15s ease,
+        opacity 0.15s ease;
+}
+
+.admin-btn-primary {
+    background: #c3e062;
+    color: #2a2820;
+    border-color: #c3e062;
+    font-weight: 700;
+}
+
+.admin-btn-primary:hover {
+    background: #d4ef73;
+    color: #2a2820;
+}
+
+.admin-btn-secondary {
+    background: #4f4943;
+    color: #ebe5cb;
+    border-color: #67625b;
+}
+
+.admin-btn-secondary:hover {
+    background: #67625b;
+    color: #ebe5cb;
+}
+
+.admin-btn-danger {
+    background: #b91c1c;
+    color: white;
+    border-color: #dc2626;
+}
+
+.admin-btn-danger:hover {
+    background: #dc2626;
+    color: white;
+}
+
+.admin-btn-muted,
+.admin-btn-muted-danger {
+    background: #4f4943;
+    color: #d4cdc0;
+    border-color: #5b554f;
+    opacity: 0.88;
+}
+
+.admin-btn-muted:hover {
+    background: #59534d;
+    color: #ebe5cb;
+}
+
+.admin-btn-muted-danger:hover {
+    background: #6f1d1d;
+    color: #fff3f3;
+    border-color: #8b1f1f;
+}
+
+.admin-btn-primary:disabled,
+.admin-btn-secondary:disabled,
+.admin-btn-danger:disabled,
+.admin-btn-muted:disabled,
+.admin-btn-muted-danger:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.admin-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid #4f4943;
+    border-radius: 0.45rem;
+    background: rgba(42, 40, 32, 0.45);
+}
+
+.admin-stat-label {
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #8f8778;
+}
+
+.admin-stat-value {
+    font-size: 0.95rem;
+    color: #ebe5cb;
+    line-height: 1.2;
+}
+
 .field-group {
     display: flex;
     flex-direction: column;

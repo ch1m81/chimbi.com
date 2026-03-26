@@ -19,6 +19,10 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'isAdmin' => session('admin_auth', false),
+            'flash' => [
+                'success' => fn() => $request->session()->get('success'),
+                'deletedArticleTitle' => fn() => $request->session()->get('deleted_article_title'),
+            ],
         ];
     }
 }

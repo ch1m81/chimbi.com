@@ -23,16 +23,93 @@ class ArticleController extends Controller
         return $html;
     }
 
+    private function excerptToHtml(string $text): string
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return '';
+        }
+
+        $paragraphs = preg_split("/\R{2,}/", $text) ?: [];
+
+        return collect($paragraphs)
+            ->map(fn(string $paragraph) => '<p>' . nl2br(e(trim($paragraph))) . '</p>')
+            ->implode("\n");
+    }
+
+    private function textContent(string $html): string
+    {
+        $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        return trim(preg_replace('/\s+/u', ' ', $text) ?? '');
+    }
+
+    private function trimTextToSentences(string $text, int $sentenceLimit): string
+    {
+        $text = trim($text);
+        if ($text === '' || $sentenceLimit < 1) {
+            return '';
+        }
+
+        preg_match_all('/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/u', $text, $matches);
+        $sentences = array_values(array_filter(array_map('trim', $matches[0] ?? [])));
+
+        if (!$sentences) {
+            return $text;
+        }
+
+        return implode(' ', array_slice($sentences, 0, $sentenceLimit));
+    }
+
+    private function summarizeBody(Article $a, string $upgradedBody): ?string
+    {
+        if ($a->excerpt) {
+            return $this->excerptToHtml($a->excerpt);
+        }
+
+        if (str_contains($upgradedBody, '<!--more-->')) {
+            return trim(explode('<!--more-->', $upgradedBody, 2)[0]);
+        }
+
+        if ($a->trim_sentences) {
+            $trimmed = $this->trimTextToSentences(
+                $this->textContent($upgradedBody),
+                (int) $a->trim_sentences,
+            );
+
+            return $trimmed !== '' ? $this->excerptToHtml($trimmed) : null;
+        }
+
+        if (preg_match('/<(iframe|video)\b[^>]*>.*?<\/\1>/is', $upgradedBody, $m)) {
+            return $m[0];
+        }
+
+        if ($a->body_trim) {
+            $text = $this->textContent($upgradedBody);
+            if ($text === '') {
+                return null;
+            }
+
+            $trimmed = mb_substr($text, 0, (int) $a->body_trim);
+            if (mb_strlen($text) > (int) $a->body_trim) {
+                $trimmed = rtrim($trimmed) . '...';
+            }
+
+            return $this->excerptToHtml($trimmed);
+        }
+
+        return trim($upgradedBody) !== '' ? $upgradedBody : null;
+    }
+
     private function formatArticle(Article $a, bool $fullBody = false): array
     {
-        // Extract first iframe from body for list view, upgrade to https
+        // List view uses excerpt/marker/sentence summary; single view gets full body.
         $body = null;
         if ($a->body) {
             $upgraded = $this->upgradeEmbeds($a->body);
             if ($fullBody) {
                 $body = $upgraded;
-            } elseif (preg_match('/<iframe[^>]*>.*?<\/iframe>/is', $upgraded, $m)) {
-                $body = $m[0];
+            } else {
+                $body = $this->summarizeBody($a, $upgraded);
             }
         }
 
@@ -154,6 +231,7 @@ class ArticleController extends Controller
     public function show(Article $article): Response
     {
         $article->load('tags');
+        $isAdmin = (bool) session('admin_auth');
 
         $formatted = $this->formatArticle($article);
 
@@ -163,7 +241,7 @@ class ArticleController extends Controller
         $formatted['body'] = $fullBody;
 
         $prev = Article::query()
-            ->published()
+            ->when(!$isAdmin, fn($q) => $q->published())
             ->where(
                 fn($q) => $q
                     ->where('published_at', '<', $article->published_at)
@@ -178,7 +256,7 @@ class ArticleController extends Controller
             ->first();
 
         $next = Article::query()
-            ->published()
+            ->when(!$isAdmin, fn($q) => $q->published())
             ->where(
                 fn($q) => $q
                     ->where('published_at', '>', $article->published_at)
