@@ -149,6 +149,7 @@
                         type="text"
                         class="font-mono w-full bg-olive-700 border-olive-400 border-s-4 rounded-sm px-3 py-2 text-base outline-none transition-colors hover:border-[#c3e062] focus:border-[#c3e062]"
                         :class="{ 'border-red-500': errors.slug }"
+                        @input="markSlugManual"
                     />
                     <p v-if="errors.slug" class="field-error">
                         {{ errors.slug }}
@@ -746,22 +747,30 @@ const exactTagMatch = computed(() =>
 );
 
 // ── Slug auto-generation ───────────────────────────────────────────────────
-const slugGenerated = ref(!props.article);
-
-function autoSlug() {
-    if (!slugGenerated.value) return;
-    form.value.slug = form.value.title
+function slugify(value) {
+    return (value ?? "")
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "");
 }
 
-watch(
-    () => form.value.slug,
-    () => {
-        if (props.article) slugGenerated.value = false;
-    },
+const slugGenerated = ref(
+    !props.article ||
+        !props.article.slug ||
+        props.article.slug === slugify(props.article.title),
 );
+
+function autoSlug() {
+    if (!slugGenerated.value) return;
+    form.value.slug = slugify(form.value.title);
+}
+
+function markSlugManual() {
+    const currentSlug = (form.value.slug ?? "").trim();
+    const generatedSlug = slugify(form.value.title);
+
+    slugGenerated.value = !currentSlug || currentSlug === generatedSlug;
+}
 
 function normalizeUrl(url) {
     return (url ?? "").trim();
