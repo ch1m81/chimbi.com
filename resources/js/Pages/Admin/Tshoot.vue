@@ -882,6 +882,45 @@ async function requestScan({ force = false, articleIds = null } = {}) {
     return data;
 }
 
+async function scanChunkWithFallback(chunk) {
+    try {
+        const data = await requestScan({
+            force: true,
+            articleIds: chunk,
+        });
+
+        const scannedArticles = data.articles ?? [];
+        mergeArticleBatch(scannedArticles);
+        scanState.value.completed += scannedArticles.length;
+
+        return [];
+    } catch (batchError) {
+        const failedArticleIds = [];
+
+        for (const articleId of chunk) {
+            try {
+                const data = await requestScan({
+                    force: true,
+                    articleIds: [articleId],
+                });
+
+                const scannedArticles = data.articles ?? [];
+                mergeArticleBatch(scannedArticles);
+            } catch (articleError) {
+                failedArticleIds.push(articleId);
+            } finally {
+                scanState.value.completed += 1;
+            }
+        }
+
+        if (failedArticleIds.length === chunk.length) {
+            throw batchError;
+        }
+
+        return failedArticleIds;
+    }
+}
+
 async function scanAll(force = false) {
     beginGlobalScan();
     scanError.value = "";
@@ -891,16 +930,15 @@ async function scanAll(force = false) {
             const chunks = articleIdChunks();
             scanState.value.total = articles.value.length;
             scanState.value.summary = null;
+            const failedArticleIds = [];
 
             for (const chunk of chunks) {
-                const data = await requestScan({
-                    force: true,
-                    articleIds: chunk,
-                });
+                failedArticleIds.push(...(await scanChunkWithFallback(chunk)));
+            }
 
-                const scannedArticles = data.articles ?? [];
-                mergeArticleBatch(scannedArticles);
-                scanState.value.completed += scannedArticles.length;
+            if (failedArticleIds.length) {
+                scanError.value =
+                    `Some articles could not be scanned live: ${failedArticleIds.join(", ")}`;
             }
         } else {
             const data = await requestScan({ force: false });
