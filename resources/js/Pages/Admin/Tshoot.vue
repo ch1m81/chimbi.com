@@ -402,6 +402,18 @@
                                 Edit
                             </a>
                             <button
+                                type="button"
+                                @click="rescanArticle(article.id, true)"
+                                :disabled="isRescanningArticle(article.id)"
+                                class="admin-btn-secondary text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                                {{
+                                    isRescanningArticle(article.id)
+                                        ? "Refreshing..."
+                                        : "Refresh"
+                                }}
+                            </button>
+                            <button
                                 v-if="hasAnyIssue(article)"
                                 type="button"
                                 @click="deleteArticle(article)"
@@ -691,6 +703,7 @@ const ignoreStates = ref({});
 const thumbnailSuggestionStates = ref({});
 const blockDeleteStates = ref({});
 const articleDeleteStates = ref({});
+const articleRescanStates = ref({});
 const articles = ref(props.articles.map(enhanceArticle));
 const currentIssueJumpIndex = ref(-1);
 let issueNavObserver = null;
@@ -805,6 +818,10 @@ function endGlobalScan() {
 
 function isDeletingArticle(articleId) {
     return !!articleDeleteStates.value[articleId];
+}
+
+function isRescanningArticle(articleId) {
+    return !!articleRescanStates.value[articleId];
 }
 
 function mergeArticles(nextArticles) {
@@ -1364,6 +1381,11 @@ async function applyThumbnailSuggestion(article) {
 }
 
 async function rescanArticle(articleId, force = false) {
+    articleRescanStates.value = {
+        ...articleRescanStates.value,
+        [articleId]: true,
+    };
+
     beginGlobalScan();
 
     try {
@@ -1386,6 +1408,10 @@ async function rescanArticle(articleId, force = false) {
         next[index] = nextArticle;
         articles.value = next;
     } finally {
+        articleRescanStates.value = {
+            ...articleRescanStates.value,
+            [articleId]: false,
+        };
         endGlobalScan();
     }
 }
