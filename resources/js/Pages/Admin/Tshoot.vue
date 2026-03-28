@@ -692,6 +692,8 @@ const articleDeleteStates = ref({});
 const articles = ref(props.articles.map(enhanceArticle));
 const currentIssueJumpIndex = ref(-1);
 let issueNavObserver = null;
+const LIVE_SCAN_BATCH_SIZE = 10;
+const LIVE_SCAN_REQUEST_TIMEOUT_MS = 45000;
 
 function enhanceArticle(article) {
     return {
@@ -819,7 +821,7 @@ function mergeArticleBatch(nextArticles) {
     articles.value = articles.value.map((article) => nextById.get(article.id) ?? article);
 }
 
-function articleIdChunks(batchSize = 20) {
+function articleIdChunks(batchSize = LIVE_SCAN_BATCH_SIZE) {
     const ids = articles.value.map((article) => article.id);
     const chunks = [];
 
@@ -831,17 +833,36 @@ function articleIdChunks(batchSize = 20) {
 }
 
 async function requestScan({ force = false, articleIds = null } = {}) {
-    const response = await fetch("/chimbi/tshoot/scan", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-TOKEN": csrfToken(),
-        },
-        body: JSON.stringify({
-            force,
-            ...(articleIds?.length ? { article_ids: articleIds } : {}),
-        }),
-    });
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(
+        () => controller.abort("scan-timeout"),
+        LIVE_SCAN_REQUEST_TIMEOUT_MS,
+    );
+
+    let response;
+
+    try {
+        response = await fetch("/chimbi/tshoot/scan", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": csrfToken(),
+            },
+            body: JSON.stringify({
+                force,
+                ...(articleIds?.length ? { article_ids: articleIds } : {}),
+            }),
+            signal: controller.signal,
+        });
+    } catch (error) {
+        if (error?.name === "AbortError") {
+            throw new Error("Live scan timed out before the server responded.");
+        }
+
+        throw error;
+    } finally {
+        window.clearTimeout(timeoutId);
+    }
 
     const raw = await response.text();
     let data = null;
@@ -867,7 +888,7 @@ async function scanAll(force = false) {
 
     try {
         if (force) {
-            const chunks = articleIdChunks(20);
+            const chunks = articleIdChunks();
             scanState.value.total = articles.value.length;
             scanState.value.summary = null;
 
@@ -877,8 +898,9 @@ async function scanAll(force = false) {
                     articleIds: chunk,
                 });
 
-                mergeArticleBatch(data.articles ?? []);
-                scanState.value.completed += chunk.length;
+                const scannedArticles = data.articles ?? [];
+                mergeArticleBatch(scannedArticles);
+                scanState.value.completed += scannedArticles.length;
             }
         } else {
             const data = await requestScan({ force: false });
