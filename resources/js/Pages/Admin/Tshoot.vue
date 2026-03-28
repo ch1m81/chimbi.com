@@ -393,12 +393,14 @@
                             >
                                 View
                             </a>
-                            <Link
+                            <a
                                 :href="article.edit_url"
+                                target="_blank"
+                                rel="noopener"
                                 class="admin-btn-secondary text-sm hover:no-underline!"
                             >
                                 Edit
-                            </Link>
+                            </a>
                             <button
                                 v-if="hasAnyIssue(article)"
                                 type="button"
