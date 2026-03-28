@@ -363,13 +363,54 @@ class AdminController extends Controller
         }
     }
 
-    private function countsTowardArticleIssue(array $link): bool
+    private function articleHasLocalImageFallback(Article $article): bool
+    {
+        if (filled($article->thumbnail)) {
+            return true;
+        }
+
+        $body = (string) ($article->getRawOriginal('body') ?? $article->body ?? '');
+        if ($body === '') {
+            return false;
+        }
+
+        preg_match_all('/<img[^>]+src=["\']([^"\']+)["\']/i', $body, $matches);
+
+        foreach ($matches[1] ?? [] as $src) {
+            $src = trim((string) $src);
+
+            if ($src === '' || str_starts_with($src, 'data:')) {
+                continue;
+            }
+
+            if ($this->normalizeExternalUrl($src) === null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function linkCountsTowardArticleIssue(Article $article, array $link): bool
     {
         if ($link['ignored'] ?? false) {
             return false;
         }
 
-        return !in_array('thumbnail_url', $link['sources'] ?? [], true);
+        $sources = collect($link['sources'] ?? [])
+            ->filter(fn($source) => is_string($source) && $source !== 'thumbnail_url')
+            ->values();
+
+        if (
+            $sources->contains('source_url')
+            && $this->articleHasLocalImageFallback($article)
+        ) {
+            $sources = $sources
+                ->reject(fn($source) => $source === 'source_url')
+                ->values();
+        }
+
+        return $sources->isNotEmpty();
     }
 
     private function tshootArticlePayload(Article $article, bool $includeStatuses = false, bool $forceScan = false): array
@@ -377,8 +418,9 @@ class AdminController extends Controller
         $body = $article->getRawOriginal('body') ?? $article->body ?? '';
         $ignoredLinks = $this->ignoredLinksForArticle($article);
         $links = collect($this->collectArticleLinks($article))
-            ->map(function (array $link) use ($includeStatuses, $forceScan, $ignoredLinks) {
+            ->map(function (array $link) use ($article, $includeStatuses, $forceScan, $ignoredLinks) {
                 $link['ignored'] = in_array($link['url'], $ignoredLinks, true);
+                $link['counts_toward_issue'] = $this->linkCountsTowardArticleIssue($article, $link);
 
                 if ($includeStatuses) {
                     $link['scan'] = $this->scanUrl($link['url'], $forceScan);
@@ -398,14 +440,14 @@ class AdminController extends Controller
 
         $issueCount = $includeStatuses
             ? $links->filter(
-                fn(array $link) => $this->countsTowardArticleIssue($link)
+                fn(array $link) => ($link['counts_toward_issue'] ?? false)
                     && ($link['scan']['state'] ?? null) === 'broken'
             )->count()
             : 0;
 
         $blockedCount = $includeStatuses
             ? $links->filter(
-                fn(array $link) => $this->countsTowardArticleIssue($link)
+                fn(array $link) => ($link['counts_toward_issue'] ?? false)
                     && ($link['scan']['state'] ?? null) === 'blocked'
             )->count()
             : 0;

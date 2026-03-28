@@ -275,7 +275,12 @@
                                 </div>
 
                                 <div
-                                    v-if="article.primary_link?.scan && article.primary_link.scan.state !== 'ok' && !article.primary_link.ignored"
+                                    v-if="
+                                        article.primary_link?.scan &&
+                                        article.primary_link.scan.state !== 'ok' &&
+                                        !article.primary_link.ignored &&
+                                        article.primary_link.counts_toward_issue
+                                    "
                                     class="mt-3 inline-flex max-w-full items-center gap-2 rounded-md border px-3 py-2 text-sm"
                                     :class="primaryIssueBannerClass(article.primary_link.scan.state)"
                                 >
@@ -1162,7 +1167,7 @@ async function toggleIgnored(article, link) {
 
 function recalculateArticleIssues(article) {
     const activeLinks = (article.links ?? []).filter(
-        (link) => !link.ignored && !link.sources?.includes("thumbnail_url"),
+        (link) => !link.ignored && link.counts_toward_issue,
     );
     article.issue_count = activeLinks.filter((link) => link.scan?.state === "broken").length;
     article.blocked_count = activeLinks.filter((link) => link.scan?.state === "blocked").length;
