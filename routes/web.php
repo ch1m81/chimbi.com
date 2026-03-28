@@ -30,6 +30,9 @@ Route::middleware(AdminAuth::class)->group(function () {
     Route::get('/chimbi/edit/{article}', [AdminController::class, 'edit'])->name('admin.edit');
     Route::put('/chimbi/edit/{article}', [AdminController::class, 'update'])->name('admin.update');
     Route::delete('/chimbi/delete/{article}', [AdminController::class, 'destroy'])->name('admin.destroy');
+    Route::get('/chimbi/tshoot',         [AdminController::class, 'tshoot'])->name('admin.tshoot');
+    Route::post('/chimbi/tshoot/scan',   [AdminController::class, 'tshootScan'])->name('admin.tshoot.scan');
+    Route::post('/chimbi/tshoot/search-replacement', [AdminController::class, 'searchReplacement'])->name('admin.tshoot.search-replacement');
     Route::post('/chimbi/fetch-meta',    [AdminController::class, 'fetchMeta'])->name('admin.fetch-meta');
     Route::post('/chimbi/suggest-tags',  [AdminController::class, 'suggestTags'])->name('admin.suggest-tags');
 });

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Article;
 use App\Models\Tag;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -101,6 +102,326 @@ class AdminController extends Controller
             'published_at'  => $article->published_at?->format('Y-m-d'),
             'tags'          => $article->tags->pluck('id')->all(),
         ];
+    }
+
+    private function normalizeExternalUrl(?string $url): ?string
+    {
+        $url = trim((string) $url);
+
+        if ($url === '' || !preg_match('/^https?:\/\//i', $url)) {
+            return null;
+        }
+
+        return $url;
+    }
+
+    private function collectArticleLinks(Article $article): array
+    {
+        $links = [];
+
+        $push = function (string $url, string $source, ?string $context = null) use (&$links) {
+            $normalized = $this->normalizeExternalUrl($url);
+
+            if (!$normalized) {
+                return;
+            }
+
+            if (!isset($links[$normalized])) {
+                $links[$normalized] = [
+                    'url' => $normalized,
+                    'sources' => [],
+                    'contexts' => [],
+                ];
+            }
+
+            if (!in_array($source, $links[$normalized]['sources'], true)) {
+                $links[$normalized]['sources'][] = $source;
+            }
+
+            $context = trim((string) $context);
+            if ($context !== '' && !in_array($context, $links[$normalized]['contexts'], true)) {
+                $links[$normalized]['contexts'][] = $context;
+            }
+        };
+
+        $push($article->source_url ?? '', 'source_url', 'Source URL');
+        $push($article->thumbnail_url ?? '', 'thumbnail_url', 'Thumbnail URL');
+
+        if (!empty($article->youtube_code)) {
+            $youtubeUrl = "https://www.youtube.com/watch?v={$article->youtube_code}";
+            $push($youtubeUrl, 'youtube_code', 'YouTube video');
+        }
+
+        $body = $article->getRawOriginal('body') ?? $article->body ?? '';
+        if ($body !== '') {
+            preg_match_all('/https?:\/\/[^\s<>"\'`]+/i', $body, $matches, PREG_OFFSET_CAPTURE);
+
+            foreach ($matches[0] ?? [] as $match) {
+                [$url, $offset] = $match;
+                $url = rtrim($url, ".,);:!?\"'<>]");
+
+                $start = max(0, $offset - 60);
+                $length = min(strlen($body) - $start, strlen($url) + 120);
+                $context = trim(preg_replace('/\s+/u', ' ', substr($body, $start, $length)) ?? '');
+                $push($url, 'body', $context);
+            }
+        }
+
+        return array_values($links);
+    }
+
+    private function scanUrl(string $url, bool $force = false): array
+    {
+        $cacheKey = 'admin-link-scan:' . sha1(Str::lower($url));
+
+        if (!$force) {
+            $cached = Cache::get($cacheKey);
+            if (is_array($cached)) {
+                return $cached;
+            }
+        }
+
+        $result = [
+            'url' => $url,
+            'state' => 'broken',
+            'label' => 'Broken',
+            'status_code' => null,
+            'checked_at' => now()->toIso8601String(),
+            'reason' => 'Request failed.',
+        ];
+
+        $youtubeCode = $this->extractYoutubeCode($url);
+        if ($youtubeCode) {
+            $youtubeResult = $this->scanYoutubeUrl($url, $youtubeCode);
+            Cache::put($cacheKey, $youtubeResult, now()->addHours(6));
+
+            return $youtubeResult;
+        }
+
+        $request = fn(string $method) => Http::withHeaders([
+            'User-Agent' => 'Mozilla/5.0 (compatible; Chimbi Admin Link Checker/1.0)',
+            'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        ])
+            ->timeout(8)
+            ->withOptions([
+                'allow_redirects' => ['max' => 5, 'track_redirects' => true],
+            ])->send($method, $url);
+
+        try {
+            $response = $request('HEAD');
+
+            if (in_array($response->status(), [403, 405, 429, 500, 501, 502, 503], true)) {
+                $response = $request('GET');
+            }
+
+            $status = $response->status();
+            $result['status_code'] = $status;
+
+            if ($status >= 200 && $status < 400) {
+                $result['state'] = 'ok';
+                $result['label'] = 'OK';
+                $result['reason'] = 'Reachable.';
+            } elseif (in_array($status, [401, 403, 429], true)) {
+                $result['state'] = 'blocked';
+                $result['label'] = 'Blocked';
+                $result['reason'] = 'The site responded but restricted automated access.';
+            } else {
+                $result['state'] = 'broken';
+                $result['label'] = 'Broken';
+                $result['reason'] = 'The remote server returned an error response.';
+            }
+        } catch (\Throwable $e) {
+            $message = trim($e->getMessage());
+            $result['reason'] = $message !== '' ? $message : 'Connection failed.';
+        }
+
+        Cache::put($cacheKey, $result, now()->addHours(6));
+
+        return $result;
+    }
+
+    private function extractYoutubeCode(string $url): ?string
+    {
+        if (preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/', $url, $matches)) {
+            return $matches[1];
+        }
+
+        return null;
+    }
+
+    private function scanYoutubeUrl(string $url, string $youtubeCode): array
+    {
+        $oembedUrl = 'https://www.youtube.com/oembed?' . http_build_query([
+            'url' => "https://www.youtube.com/watch?v={$youtubeCode}",
+            'format' => 'json',
+        ]);
+
+        $result = [
+            'url' => $url,
+            'state' => 'broken',
+            'label' => 'Broken',
+            'status_code' => null,
+            'checked_at' => now()->toIso8601String(),
+            'reason' => 'YouTube video is unavailable.',
+        ];
+
+        try {
+            $response = Http::withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (compatible; Chimbi Admin Link Checker/1.0)',
+                'Accept' => 'application/json,text/html;q=0.9,*/*;q=0.8',
+            ])->timeout(8)->get($oembedUrl);
+
+            $status = $response->status();
+            $result['status_code'] = $status;
+
+            if ($response->successful()) {
+                return [
+                    ...$result,
+                    'state' => 'ok',
+                    'label' => 'OK',
+                    'reason' => 'YouTube video is publicly available.',
+                ];
+            }
+
+            if (in_array($status, [401, 403], true)) {
+                return [
+                    ...$result,
+                    'state' => 'blocked',
+                    'label' => 'Locked',
+                    'reason' => 'YouTube video exists but is private, restricted, or otherwise locked.',
+                ];
+            }
+
+            return [
+                ...$result,
+                'state' => 'broken',
+                'label' => 'Broken',
+                'reason' => 'YouTube video is missing, deleted, or unavailable.',
+            ];
+        } catch (\Throwable $e) {
+            $message = trim($e->getMessage());
+
+            return [
+                ...$result,
+                'reason' => $message !== '' ? $message : 'YouTube check failed.',
+            ];
+        }
+    }
+
+    private function tshootArticlePayload(Article $article, bool $includeStatuses = false, bool $forceScan = false): array
+    {
+        $body = $article->getRawOriginal('body') ?? $article->body ?? '';
+        $links = collect($this->collectArticleLinks($article))
+            ->map(function (array $link) use ($includeStatuses, $forceScan) {
+                if ($includeStatuses) {
+                    $link['scan'] = $this->scanUrl($link['url'], $forceScan);
+                }
+
+                return $link;
+            })
+            ->values();
+
+        $issueCount = $includeStatuses
+            ? $links->filter(fn(array $link) => ($link['scan']['state'] ?? null) === 'broken')->count()
+            : 0;
+
+        $blockedCount = $includeStatuses
+            ? $links->filter(fn(array $link) => ($link['scan']['state'] ?? null) === 'blocked')->count()
+            : 0;
+
+        return [
+            'id' => $article->id,
+            'title' => $article->title,
+            'slug' => $article->slug,
+            'published' => (bool) $article->published,
+            'published_at' => $article->published_at?->format('Y-m-d'),
+            'source_url' => $article->source_url,
+            'body' => $body,
+            'body_preview' => Str::limit(trim(preg_replace('/\s+/u', ' ', strip_tags($body)) ?? ''), 280),
+            'links' => $links->all(),
+            'link_count' => $links->count(),
+            'issue_count' => $issueCount,
+            'blocked_count' => $blockedCount,
+            'has_issues' => $issueCount > 0,
+            'edit_url' => route('admin.edit', ['article' => $article->id, 'return_to' => route('admin.tshoot')]),
+            'view_url' => route('articles.show', ['article' => $article->id, 'slug' => $article->slug]),
+        ];
+    }
+
+    private function buildReplacementQuery(string $url, ?string $articleTitle = null): string
+    {
+        $parts = parse_url($url);
+        $host = $parts['host'] ?? '';
+        $path = $parts['path'] ?? '';
+        $segments = collect(explode('/', $path))
+            ->filter()
+            ->map(fn(string $segment) => preg_replace('/[-_]+/', ' ', pathinfo($segment, PATHINFO_FILENAME)))
+            ->filter()
+            ->implode(' ');
+
+        return trim(collect([
+            $articleTitle,
+            $host !== '' ? "\"{$host}\"" : null,
+            $segments,
+        ])->filter()->implode(' '));
+    }
+
+    private function duckDuckGoResults(string $query): array
+    {
+        $response = Http::withHeaders([
+            'User-Agent' => 'Mozilla/5.0 (compatible; Chimbi Admin Search/1.0)',
+            'Accept' => 'text/html,application/xhtml+xml',
+        ])
+            ->timeout(12)
+            ->get('https://html.duckduckgo.com/html/', ['q' => $query]);
+
+        if (!$response->successful()) {
+            throw new \RuntimeException('Search provider returned an unexpected response.');
+        }
+
+        libxml_use_internal_errors(true);
+
+        $dom = new \DOMDocument();
+        $dom->loadHTML($response->body());
+        $xpath = new \DOMXPath($dom);
+
+        $results = [];
+        foreach ($xpath->query("//a[contains(@class, 'result__a')]") as $node) {
+            $href = trim((string) $node->getAttribute('href'));
+            $title = trim($node->textContent);
+
+            if ($href === '' || $title === '') {
+                continue;
+            }
+
+            $parsed = parse_url(html_entity_decode($href, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+            $target = $href;
+
+            if (($parsed['host'] ?? '') === 'duckduckgo.com') {
+                parse_str($parsed['query'] ?? '', $queryParams);
+                $target = $queryParams['uddg'] ?? $href;
+            }
+
+            $target = html_entity_decode($target, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+            if (!$this->normalizeExternalUrl($target)) {
+                continue;
+            }
+
+            $results[] = [
+                'title' => $title,
+                'url' => $target,
+                'host' => parse_url($target, PHP_URL_HOST) ?: '',
+            ];
+
+            if (count($results) >= 6) {
+                break;
+            }
+        }
+
+        libxml_clear_errors();
+
+        return $results;
     }
 
     // ── Password check ────────────────────────────────────────────────────
@@ -270,6 +591,76 @@ class AdminController extends Controller
         ])
             ->with('success', 'Article deleted.')
             ->with('deleted_article_title', $deletedTitle);
+    }
+
+    public function tshoot(): Response
+    {
+        $articles = Article::query()
+            ->orderByDesc('published_at')
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn(Article $article) => $this->tshootArticlePayload($article))
+            ->all();
+
+        return Inertia::render('Admin/Tshoot', [
+            'articles' => $articles,
+        ]);
+    }
+
+    public function tshootScan(Request $request)
+    {
+        $data = $request->validate([
+            'article_ids' => 'nullable|array',
+            'article_ids.*' => 'integer|exists:articles,id',
+            'force' => 'nullable|boolean',
+        ]);
+
+        $force = (bool) ($data['force'] ?? false);
+
+        $articles = Article::query()
+            ->when(
+                !empty($data['article_ids']),
+                fn($query) => $query->whereIn('id', $data['article_ids'])
+            )
+            ->orderByDesc('published_at')
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn(Article $article) => $this->tshootArticlePayload($article, true, $force))
+            ->values();
+
+        return response()->json([
+            'articles' => $articles,
+            'summary' => [
+                'article_count' => $articles->count(),
+                'issue_count' => $articles->sum('issue_count'),
+                'articles_with_issues' => $articles->where('has_issues', true)->count(),
+                'blocked_count' => $articles->sum('blocked_count'),
+            ],
+        ]);
+    }
+
+    public function searchReplacement(Request $request)
+    {
+        $data = $request->validate([
+            'url' => 'required|url',
+            'article_title' => 'nullable|string|max:255',
+        ]);
+
+        $query = $this->buildReplacementQuery($data['url'], $data['article_title'] ?? null);
+
+        try {
+            $results = $this->duckDuckGoResults($query);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => 'Replacement search failed.',
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'query' => $query,
+            'results' => $results,
+        ]);
     }
 
     // ── Tag suggestions ────────────────────────────────────────────────────

@@ -71,6 +71,12 @@
             </div>
 
             <div class="flex items-center gap-3 shrink-0">
+                <Link
+                    href="/chimbi/tshoot"
+                    class="px-3 py-1 text-sm bg-[#4f4943] hover:bg-[#67625b] rounded text-[#ebe5cb]! hover:no-underline!"
+                >
+                    Tshoot
+                </Link>
                 <button
                     v-if="mode === 'edit'"
                     @click="confirmDelete"
