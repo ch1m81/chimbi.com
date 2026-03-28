@@ -674,6 +674,8 @@ const scanState = ref({
     running: false,
     finished: false,
     summary: null,
+    completed: 0,
+    total: 0,
 });
 
 const expanded = ref({});
@@ -770,6 +772,10 @@ const summary = computed(() => {
 
 const scanButtonLabel = computed(() => {
     if (scanState.value.running) {
+        if (scanState.value.total > 0) {
+            return `Scanning live ${scanState.value.completed}/${scanState.value.total}...`;
+        }
+
         return "Scanning live...";
     }
 
@@ -778,10 +784,14 @@ const scanButtonLabel = computed(() => {
 
 function beginGlobalScan() {
     scanState.value.running = true;
+    scanState.value.completed = 0;
+    scanState.value.total = 0;
 }
 
 function endGlobalScan() {
     scanState.value.running = false;
+    scanState.value.completed = 0;
+    scanState.value.total = 0;
 }
 
 function isDeletingArticle(articleId) {
@@ -796,37 +806,81 @@ function mergeArticles(nextArticles) {
     currentIssueJumpIndex.value = -1;
 }
 
+function mergeArticleBatch(nextArticles) {
+    if (!nextArticles?.length) return;
+
+    const nextById = new Map(nextArticles.map((article) => [article.id, enhanceArticle(article)]));
+
+    articles.value = articles.value.map((article) => nextById.get(article.id) ?? article);
+}
+
+function articleIdChunks(batchSize = 20) {
+    const ids = articles.value.map((article) => article.id);
+    const chunks = [];
+
+    for (let index = 0; index < ids.length; index += batchSize) {
+        chunks.push(ids.slice(index, index + batchSize));
+    }
+
+    return chunks;
+}
+
+async function requestScan({ force = false, articleIds = null } = {}) {
+    const response = await fetch("/chimbi/tshoot/scan", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": csrfToken(),
+        },
+        body: JSON.stringify({
+            force,
+            ...(articleIds?.length ? { article_ids: articleIds } : {}),
+        }),
+    });
+
+    const raw = await response.text();
+    let data = null;
+
+    try {
+        data = raw ? JSON.parse(raw) : {};
+    } catch {
+        throw new Error(
+            raw?.trim()?.slice(0, 220) || "Scan returned a non-JSON response.",
+        );
+    }
+
+    if (!response.ok) {
+        throw new Error(data.message ?? data.error ?? "Scan failed.");
+    }
+
+    return data;
+}
+
 async function scanAll(force = false) {
     beginGlobalScan();
     scanError.value = "";
 
     try {
-        const response = await fetch("/chimbi/tshoot/scan", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRF-TOKEN": csrfToken(),
-            },
-            body: JSON.stringify({ force }),
-        });
+        if (force) {
+            const chunks = articleIdChunks(20);
+            scanState.value.total = articles.value.length;
+            scanState.value.summary = null;
 
-        const raw = await response.text();
-        let data = null;
+            for (const chunk of chunks) {
+                const data = await requestScan({
+                    force: true,
+                    articleIds: chunk,
+                });
 
-        try {
-            data = raw ? JSON.parse(raw) : {};
-        } catch {
-            throw new Error(
-                raw?.trim()?.slice(0, 220) || "Scan returned a non-JSON response.",
-            );
+                mergeArticleBatch(data.articles ?? []);
+                scanState.value.completed += chunk.length;
+            }
+        } else {
+            const data = await requestScan({ force: false });
+            mergeArticles(data.articles ?? []);
+            scanState.value.summary = data.summary ?? null;
         }
 
-        if (!response.ok) {
-            throw new Error(data.message ?? data.error ?? "Scan failed.");
-        }
-
-        mergeArticles(data.articles ?? []);
-        scanState.value.summary = data.summary ?? null;
         scanState.value.finished = true;
         await nextTick();
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1242,32 +1296,12 @@ async function rescanArticle(articleId, force = false) {
     beginGlobalScan();
 
     try {
-        const response = await fetch("/chimbi/tshoot/scan", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRF-TOKEN": csrfToken(),
-            },
-            body: JSON.stringify({
-                article_ids: [articleId],
-                force,
-            }),
+        scanState.value.total = 1;
+        const data = await requestScan({
+            articleIds: [articleId],
+            force,
         });
-
-        const raw = await response.text();
-        let data = null;
-
-        try {
-            data = raw ? JSON.parse(raw) : {};
-        } catch {
-            throw new Error(
-                raw?.trim()?.slice(0, 220) || "Article rescan returned a non-JSON response.",
-            );
-        }
-
-        if (!response.ok) {
-            throw new Error(data.message ?? data.error ?? "Article rescan failed.");
-        }
+        scanState.value.completed = 1;
 
         const refreshed = (data.articles ?? [])[0];
         if (!refreshed) return;
