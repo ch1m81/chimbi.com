@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -108,6 +109,10 @@ class AdminController extends Controller
     {
         $url = trim((string) $url);
 
+        if (str_starts_with($url, '//')) {
+            $url = 'https:' . $url;
+        }
+
         if ($url === '' || !preg_match('/^https?:\/\//i', $url)) {
             return null;
         }
@@ -154,6 +159,12 @@ class AdminController extends Controller
 
         $body = $article->getRawOriginal('body') ?? $article->body ?? '';
         if ($body !== '') {
+            preg_match_all('/(?:src|href)=["\']([^"\']+)["\']/i', $body, $attributeMatches);
+
+            foreach ($attributeMatches[1] ?? [] as $attributeUrl) {
+                $push($attributeUrl, 'body', $attributeUrl);
+            }
+
             preg_match_all('/https?:\/\/[^\s<>"\'`]+/i', $body, $matches, PREG_OFFSET_CAPTURE);
 
             foreach ($matches[0] ?? [] as $match) {
@@ -168,6 +179,41 @@ class AdminController extends Controller
         }
 
         return array_values($links);
+    }
+
+    private function ignoredLinksPath(): string
+    {
+        return 'admin/tshoot-ignored-links.json';
+    }
+
+    private function ignoredLinksMap(): array
+    {
+        $disk = Storage::disk('local');
+        $path = $this->ignoredLinksPath();
+
+        if (!$disk->exists($path)) {
+            return [];
+        }
+
+        $decoded = json_decode($disk->get($path), true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    private function ignoredLinksForArticle(Article $article): array
+    {
+        $map = $this->ignoredLinksMap();
+        $urls = $map[(string) $article->id] ?? [];
+
+        return is_array($urls) ? array_values(array_filter($urls, 'is_string')) : [];
+    }
+
+    private function saveIgnoredLinksMap(array $map): void
+    {
+        Storage::disk('local')->put(
+            $this->ignoredLinksPath(),
+            json_encode($map, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+        );
     }
 
     private function scanUrl(string $url, bool $force = false): array
@@ -242,8 +288,17 @@ class AdminController extends Controller
 
     private function extractYoutubeCode(string $url): ?string
     {
-        if (preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/', $url, $matches)) {
+        $normalized = html_entity_decode(trim($url), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        if (preg_match('/(?:youtube(?:-nocookie)?\.com\/watch\?[^"\']*v=|youtu\.be\/|youtube(?:-nocookie)?\.com\/embed\/)([a-zA-Z0-9_-]{11})/i', $normalized, $matches)) {
             return $matches[1];
+        }
+
+        $parts = parse_url($normalized);
+        parse_str($parts['query'] ?? '', $query);
+
+        if (!empty($query['v']) && preg_match('/^[a-zA-Z0-9_-]{11}$/', $query['v'])) {
+            return $query['v'];
         }
 
         return null;
@@ -308,11 +363,23 @@ class AdminController extends Controller
         }
     }
 
+    private function countsTowardArticleIssue(array $link): bool
+    {
+        if ($link['ignored'] ?? false) {
+            return false;
+        }
+
+        return !in_array('thumbnail_url', $link['sources'] ?? [], true);
+    }
+
     private function tshootArticlePayload(Article $article, bool $includeStatuses = false, bool $forceScan = false): array
     {
         $body = $article->getRawOriginal('body') ?? $article->body ?? '';
+        $ignoredLinks = $this->ignoredLinksForArticle($article);
         $links = collect($this->collectArticleLinks($article))
-            ->map(function (array $link) use ($includeStatuses, $forceScan) {
+            ->map(function (array $link) use ($includeStatuses, $forceScan, $ignoredLinks) {
+                $link['ignored'] = in_array($link['url'], $ignoredLinks, true);
+
                 if ($includeStatuses) {
                     $link['scan'] = $this->scanUrl($link['url'], $forceScan);
                 }
@@ -321,12 +388,26 @@ class AdminController extends Controller
             })
             ->values();
 
+        $primaryLink = $links->first(
+            fn(array $link) => in_array('source_url', $link['sources'] ?? [], true)
+        );
+
+        $primaryIssue = $includeStatuses
+            ? ($primaryLink['scan'] ?? null)
+            : null;
+
         $issueCount = $includeStatuses
-            ? $links->filter(fn(array $link) => ($link['scan']['state'] ?? null) === 'broken')->count()
+            ? $links->filter(
+                fn(array $link) => $this->countsTowardArticleIssue($link)
+                    && ($link['scan']['state'] ?? null) === 'broken'
+            )->count()
             : 0;
 
         $blockedCount = $includeStatuses
-            ? $links->filter(fn(array $link) => ($link['scan']['state'] ?? null) === 'blocked')->count()
+            ? $links->filter(
+                fn(array $link) => $this->countsTowardArticleIssue($link)
+                    && ($link['scan']['state'] ?? null) === 'blocked'
+            )->count()
             : 0;
 
         return [
@@ -339,6 +420,9 @@ class AdminController extends Controller
             'body' => $body,
             'body_preview' => Str::limit(trim(preg_replace('/\s+/u', ' ', strip_tags($body)) ?? ''), 280),
             'links' => $links->all(),
+            'primary_link' => $primaryLink,
+            'primary_issue' => $primaryIssue,
+            'ignored_link_count' => $links->where('ignored', true)->count(),
             'link_count' => $links->count(),
             'issue_count' => $issueCount,
             'blocked_count' => $blockedCount,
@@ -346,6 +430,117 @@ class AdminController extends Controller
             'edit_url' => route('admin.edit', ['article' => $article->id, 'return_to' => route('admin.tshoot')]),
             'view_url' => route('articles.show', ['article' => $article->id, 'slug' => $article->slug]),
         ];
+    }
+
+    private function bodyBlockRemovalCandidates(Article $article, string $url): array
+    {
+        $body = $article->getRawOriginal('body') ?? $article->body ?? '';
+        if (trim($body) === '') {
+            return [];
+        }
+
+        $wrapperId = 'tshoot-root';
+        $html = '<div id="' . $wrapperId . '">' . $body . '</div>';
+
+        libxml_use_internal_errors(true);
+        $dom = new \DOMDocument();
+        $dom->loadHTML('<?xml encoding="utf-8" ?>' . $html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        $xpath = new \DOMXPath($dom);
+
+        $candidate = null;
+        foreach ($xpath->query('//*[@href or @src]') as $node) {
+            $href = trim((string) $node->attributes?->getNamedItem('href')?->nodeValue);
+            $src = trim((string) $node->attributes?->getNamedItem('src')?->nodeValue);
+
+            if ($href === $url || $src === $url) {
+                $candidate = $node;
+                break;
+            }
+        }
+
+        if (!$candidate) {
+            foreach ($xpath->query('//*') as $node) {
+                if (str_contains($node->textContent ?? '', $url)) {
+                    $candidate = $node;
+                    break;
+                }
+            }
+        }
+
+        if (!$candidate) {
+            libxml_clear_errors();
+            return [];
+        }
+
+        $candidates = [];
+        $seen = [];
+        $node = $candidate instanceof \DOMElement ? $candidate : $candidate->parentNode;
+
+        while ($node instanceof \DOMElement) {
+            if ($node->getAttribute('id') === $wrapperId) {
+                break;
+            }
+
+            $tag = strtolower($node->nodeName);
+            if (in_array($tag, ['a', 'p', 'div', 'li', 'figure', 'section', 'blockquote', 'span'], true)) {
+                $path = $node->getNodePath();
+                if (!isset($seen[$path])) {
+                    $seen[$path] = true;
+                    $candidates[] = [
+                        'path' => $path,
+                        'label' => $tag === 'a' ? 'Just the link tag' : "Whole <{$tag}> block",
+                    ];
+                }
+            }
+
+            $node = $node->parentNode;
+        }
+
+        if (!$candidates) {
+            libxml_clear_errors();
+            return [];
+        }
+
+        $results = [];
+
+        foreach ($candidates as $index => $candidateMeta) {
+            $candidateDom = new \DOMDocument();
+            $candidateDom->loadHTML('<?xml encoding="utf-8" ?>' . $html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+            $candidateXpath = new \DOMXPath($candidateDom);
+            $targetNodes = $candidateXpath->query($candidateMeta['path']);
+            $targetNode = $targetNodes?->item(0);
+
+            if (!$targetNode instanceof \DOMElement) {
+                continue;
+            }
+
+            $previewHtml = trim($candidateDom->saveHTML($targetNode));
+            $targetNode->parentNode?->removeChild($targetNode);
+
+            $root = $candidateDom->getElementById($wrapperId);
+            $updatedBody = '';
+
+            if ($root) {
+                foreach ($root->childNodes as $child) {
+                    $updatedBody .= $candidateDom->saveHTML($child);
+                }
+            }
+
+            if ($previewHtml === '') {
+                continue;
+            }
+
+            $results[] = [
+                'key' => (string) $index,
+                'label' => $candidateMeta['label'],
+                'preview_html' => $previewHtml,
+                'updated_body' => trim($updatedBody),
+            ];
+        }
+
+        libxml_clear_errors();
+
+        return $results;
     }
 
     private function buildReplacementQuery(string $url, ?string $articleTitle = null): string
@@ -440,7 +635,7 @@ class AdminController extends Controller
         }
 
         session(['admin_auth' => true]);
-        return redirect()->route('admin.create');
+        return redirect()->route('admin.tshoot');
     }
 
     public function logout()
@@ -593,6 +788,19 @@ class AdminController extends Controller
             ->with('deleted_article_title', $deletedTitle);
     }
 
+    public function deleteFromTshoot(Article $article)
+    {
+        $deletedTitle = $article->title;
+        $article->tags()->detach();
+        $article->delete();
+
+        return response()->json([
+            'ok' => true,
+            'article_id' => $article->id,
+            'title' => $deletedTitle,
+        ]);
+    }
+
     public function tshoot(): Response
     {
         $articles = Article::query()
@@ -663,6 +871,44 @@ class AdminController extends Controller
         ]);
     }
 
+    public function toggleIgnoredLink(Request $request)
+    {
+        $data = $request->validate([
+            'article_id' => 'required|integer|exists:articles,id',
+            'url' => 'required|url',
+            'ignored' => 'required|boolean',
+        ]);
+
+        $map = $this->ignoredLinksMap();
+        $articleKey = (string) $data['article_id'];
+        $urls = $map[$articleKey] ?? [];
+
+        if (!is_array($urls)) {
+            $urls = [];
+        }
+
+        if ($data['ignored']) {
+            if (!in_array($data['url'], $urls, true)) {
+                $urls[] = $data['url'];
+            }
+        } else {
+            $urls = array_values(array_filter($urls, fn(string $url) => $url !== $data['url']));
+        }
+
+        if ($urls) {
+            $map[$articleKey] = array_values(array_unique($urls));
+        } else {
+            unset($map[$articleKey]);
+        }
+
+        $this->saveIgnoredLinksMap($map);
+
+        return response()->json([
+            'ok' => true,
+            'ignored' => (bool) $data['ignored'],
+        ]);
+    }
+
     // ── Tag suggestions ────────────────────────────────────────────────────
 
     public function suggestTags(Request $request)
@@ -706,11 +952,8 @@ class AdminController extends Controller
 
     // ── URL meta fetch ─────────────────────────────────────────────────────
 
-    public function fetchMeta(Request $request)
+    private function metadataForUrl(string $url): array
     {
-        $request->validate(['url' => 'required|url']);
-        $url = $request->url;
-
         // Detect YouTube
         $youtubeCode = null;
         if (preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/', $url, $m)) {
@@ -730,7 +973,6 @@ class AdminController extends Controller
             ], true);
         };
 
-        // Standard HTML fetch
         $html = '';
         try {
             $ctx = stream_context_create(['http' => [
@@ -739,14 +981,16 @@ class AdminController extends Controller
                 'user_agent'      => 'Mozilla/5.0 (compatible; Chimbi/1.0)',
             ]]);
             $html = @file_get_contents($url, false, $ctx);
-            if ($html === false) $html = '';
+            if ($html === false) {
+                $html = '';
+            }
         } catch (\Throwable) {
             $html = '';
         }
 
-        $title       = null;
+        $title = null;
         $description = null;
-        $thumbnail   = null;
+        $thumbnail = null;
 
         if ($html) {
             if (preg_match('/<meta[^>]+property=["\']og:title["\'][^>]+content=["\'](.*?)["\']/', $html, $m)) {
@@ -774,11 +1018,120 @@ class AdminController extends Controller
             $thumbnail = "https://img.youtube.com/vi/{$youtubeCode}/hqdefault.jpg";
         }
 
-        return response()->json([
-            'title'        => $title,
-            'description'  => $description,
+        return [
+            'title' => $title,
+            'description' => $description,
             'thumbnail_url' => $thumbnail,
             'youtube_code' => $youtubeCode,
+        ];
+    }
+
+    public function fetchMeta(Request $request)
+    {
+        $request->validate(['url' => 'required|url']);
+        return response()->json($this->metadataForUrl($request->url));
+    }
+
+    public function thumbnailSuggestion(Request $request)
+    {
+        $data = $request->validate([
+            'article_id' => 'required|integer|exists:articles,id',
+        ]);
+
+        $article = Article::findOrFail($data['article_id']);
+
+        if (!$article->source_url) {
+            return response()->json([
+                'error' => 'This article has no source URL to fetch a thumbnail from.',
+            ], 422);
+        }
+
+        $meta = $this->metadataForUrl($article->source_url);
+        $suggestedUrl = $meta['thumbnail_url'] ?? null;
+
+        if (!$suggestedUrl) {
+            return response()->json([
+                'error' => 'No thumbnail candidate was found from the source URL.',
+            ], 422);
+        }
+
+        return response()->json([
+            'current_thumbnail_url' => $article->thumbnail_url,
+            'suggested_thumbnail_url' => $suggestedUrl,
+            'source_url' => $article->source_url,
+        ]);
+    }
+
+    public function applyThumbnailSuggestion(Request $request)
+    {
+        $data = $request->validate([
+            'article_id' => 'required|integer|exists:articles,id',
+            'thumbnail_url' => 'required|url|max:500',
+        ]);
+
+        $article = Article::findOrFail($data['article_id']);
+        $article->update([
+            'thumbnail_url' => $data['thumbnail_url'],
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'thumbnail_url' => $article->thumbnail_url,
+        ]);
+    }
+
+    public function deleteBlockPreview(Request $request)
+    {
+        $data = $request->validate([
+            'article_id' => 'required|integer|exists:articles,id',
+            'url' => 'required|url',
+        ]);
+
+        $article = Article::findOrFail($data['article_id']);
+        $candidates = $this->bodyBlockRemovalCandidates($article, $data['url']);
+
+        if (!$candidates) {
+            return response()->json([
+                'error' => 'Could not find a removable body block for that broken link.',
+            ], 422);
+        }
+
+        return response()->json([
+            'candidates' => array_map(
+                fn(array $candidate) => [
+                    'key' => $candidate['key'],
+                    'label' => $candidate['label'],
+                    'preview_html' => $candidate['preview_html'],
+                ],
+                $candidates
+            ),
+        ]);
+    }
+
+    public function deleteBlock(Request $request)
+    {
+        $data = $request->validate([
+            'article_id' => 'required|integer|exists:articles,id',
+            'url' => 'required|url',
+            'candidate_key' => 'required|string',
+        ]);
+
+        $article = Article::findOrFail($data['article_id']);
+        $candidates = collect($this->bodyBlockRemovalCandidates($article, $data['url']));
+        $selected = $candidates->firstWhere('key', $data['candidate_key']);
+
+        if (!$selected) {
+            return response()->json([
+                'error' => 'Could not find a removable body block for that broken link.',
+            ], 422);
+        }
+
+        $article->update([
+            'body' => $selected['updated_body'],
+        ]);
+
+        return response()->json([
+            'ok' => true,
         ]);
     }
 }

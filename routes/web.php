@@ -32,6 +32,12 @@ Route::middleware(AdminAuth::class)->group(function () {
     Route::delete('/chimbi/delete/{article}', [AdminController::class, 'destroy'])->name('admin.destroy');
     Route::get('/chimbi/tshoot',         [AdminController::class, 'tshoot'])->name('admin.tshoot');
     Route::post('/chimbi/tshoot/scan',   [AdminController::class, 'tshootScan'])->name('admin.tshoot.scan');
+    Route::post('/chimbi/tshoot/ignore', [AdminController::class, 'toggleIgnoredLink'])->name('admin.tshoot.ignore');
+    Route::post('/chimbi/tshoot/thumbnail-suggestion', [AdminController::class, 'thumbnailSuggestion'])->name('admin.tshoot.thumbnail-suggestion');
+    Route::post('/chimbi/tshoot/apply-thumbnail', [AdminController::class, 'applyThumbnailSuggestion'])->name('admin.tshoot.apply-thumbnail');
+    Route::post('/chimbi/tshoot/delete-block-preview', [AdminController::class, 'deleteBlockPreview'])->name('admin.tshoot.delete-block-preview');
+    Route::post('/chimbi/tshoot/delete-block', [AdminController::class, 'deleteBlock'])->name('admin.tshoot.delete-block');
+    Route::delete('/chimbi/tshoot/article/{article}', [AdminController::class, 'deleteFromTshoot'])->name('admin.tshoot.delete-article');
     Route::post('/chimbi/tshoot/search-replacement', [AdminController::class, 'searchReplacement'])->name('admin.tshoot.search-replacement');
     Route::post('/chimbi/fetch-meta',    [AdminController::class, 'fetchMeta'])->name('admin.fetch-meta');
     Route::post('/chimbi/suggest-tags',  [AdminController::class, 'suggestTags'])->name('admin.suggest-tags');

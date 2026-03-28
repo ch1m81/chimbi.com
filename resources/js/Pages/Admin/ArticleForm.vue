@@ -832,8 +832,9 @@ function setFetchedYoutubeBody(code, description = "") {
 
 function applyFetchedContent({ title, description, youtubeCode, thumbnailUrl, mediaBody = "" }) {
     const replacingSource = isSourceReplacement();
+    const shouldKeepExistingTitle = replacingSource && !!youtubeCode && !!form.value.title;
 
-    if (title && (!form.value.title || replacingSource)) {
+    if (title && (!form.value.title || (replacingSource && !shouldKeepExistingTitle))) {
         form.value.title = title;
         if (slugGenerated.value) autoSlug();
     }
