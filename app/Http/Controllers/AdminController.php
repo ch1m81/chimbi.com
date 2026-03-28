@@ -501,22 +501,14 @@ class AdminController extends Controller
         $xpath = new \DOMXPath($dom);
 
         $candidate = null;
-        foreach ($xpath->query('//*[@href or @src]') as $node) {
-            $href = trim((string) $node->attributes?->getNamedItem('href')?->nodeValue);
-            $src = trim((string) $node->attributes?->getNamedItem('src')?->nodeValue);
+        foreach ($xpath->query('//*') as $node) {
+            if (!$node instanceof \DOMElement || $node->getAttribute('id') === $wrapperId) {
+                continue;
+            }
 
-            if ($href === $url || $src === $url) {
+            if ($this->bodyBlockNodeMatchesUrl($node, $url, $dom)) {
                 $candidate = $node;
                 break;
-            }
-        }
-
-        if (!$candidate) {
-            foreach ($xpath->query('//*') as $node) {
-                if (str_contains($node->textContent ?? '', $url)) {
-                    $candidate = $node;
-                    break;
-                }
             }
         }
 
@@ -594,6 +586,63 @@ class AdminController extends Controller
         libxml_clear_errors();
 
         return $results;
+    }
+
+    private function bodyBlockNodeMatchesUrl(\DOMElement $node, string $url, \DOMDocument $dom): bool
+    {
+        $href = trim((string) $node->getAttribute('href'));
+        $src = trim((string) $node->getAttribute('src'));
+
+        if ($href === $url || $src === $url) {
+            return true;
+        }
+
+        $text = html_entity_decode(trim((string) $node->textContent), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $html = html_entity_decode(trim((string) $dom->saveHTML($node)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        foreach ($this->bodyBlockUrlNeedles($url) as $needle) {
+            if ($needle === '') {
+                continue;
+            }
+
+            if (stripos($text, $needle) !== false || stripos($html, $needle) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function bodyBlockUrlNeedles(string $url): array
+    {
+        $decoded = html_entity_decode(trim($url), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $parts = parse_url($decoded);
+
+        if ($parts === false) {
+            return [$decoded];
+        }
+
+        $host = Str::lower((string) ($parts['host'] ?? ''));
+        $path = (string) ($parts['path'] ?? '');
+        $query = isset($parts['query']) && $parts['query'] !== '' ? '?' . $parts['query'] : '';
+
+        $needles = collect([
+            $decoded,
+            preg_replace('#^https?://#i', '', $decoded),
+            $host !== '' ? $host . $path . $query : null,
+            $host !== '' ? preg_replace('/^www\./i', '', $host) . $path . $query : null,
+            $host !== '' && !str_starts_with($host, 'www.') ? 'www.' . $host . $path . $query : null,
+            $host,
+            $host !== '' ? preg_replace('/^www\./i', '', $host) : null,
+        ])
+            ->filter(fn($needle) => is_string($needle) && trim($needle) !== '')
+            ->map(fn($needle) => trim($needle, " \t\n\r\0\x0B/"))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        return $needles;
     }
 
     private function buildReplacementQuery(string $url, ?string $articleTitle = null): string
