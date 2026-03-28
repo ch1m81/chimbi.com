@@ -1134,7 +1134,7 @@ class AdminController extends Controller
 
         if (!$candidates) {
             return response()->json([
-                'error' => 'Could not find a removable body block for that broken link.',
+                'error' => 'Could not find a removable body block for that broken or blocked link.',
             ], 422);
         }
 
@@ -1164,7 +1164,7 @@ class AdminController extends Controller
 
         if (!$selected) {
             return response()->json([
-                'error' => 'Could not find a removable body block for that broken link.',
+                'error' => 'Could not find a removable body block for that broken or blocked link.',
             ], 422);
         }
 

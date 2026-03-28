@@ -1090,7 +1090,11 @@ function canToggleIgnore(link) {
 }
 
 function canDeleteBodyBlock(link) {
-    return !link.ignored && link.scan?.state === "broken" && link.sources?.includes("body");
+    return (
+        !link.ignored &&
+        ["broken", "blocked"].includes(link.scan?.state ?? "") &&
+        link.sources?.includes("body")
+    );
 }
 
 function secondaryLinks(article) {
