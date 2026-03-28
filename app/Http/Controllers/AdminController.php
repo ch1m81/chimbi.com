@@ -117,6 +117,17 @@ class AdminController extends Controller
             return null;
         }
 
+        $parts = parse_url($url);
+        $host = Str::lower($parts['host'] ?? '');
+
+        if (in_array($host, ['twitter.com', 'www.twitter.com', 'mobile.twitter.com'], true)) {
+            $path = $parts['path'] ?? '';
+            $query = isset($parts['query']) ? '?' . $parts['query'] : '';
+            $fragment = isset($parts['fragment']) ? '#' . $parts['fragment'] : '';
+
+            return 'https://x.com' . $path . $query . $fragment;
+        }
+
         return $url;
     }
 
