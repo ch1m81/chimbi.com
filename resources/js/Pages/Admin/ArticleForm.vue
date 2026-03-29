@@ -134,14 +134,24 @@
                 <!-- Title -->
                 <div class="field-group">
                     <label class="field-label">Title</label>
-                    <input
-                        v-model="form.title"
-                        type="text"
-                        placeholder="Article title"
-                        class="w-full bg-olive-700 border-olive-400 border-s-4 rounded-sm px-3 py-2 text-base outline-none transition-colors hover:border-[#c3e062] focus:border-[#c3e062]"
-                        :class="{ 'border-red-500': errors.title }"
-                        @input="autoSlug"
-                    />
+                    <div class="flex gap-2">
+                        <input
+                            v-model="form.title"
+                            type="text"
+                            placeholder="Article title"
+                            class="grow w-full bg-olive-700 border-olive-400 border-s-4 rounded-sm px-3 py-2 text-base outline-none transition-colors hover:border-[#c3e062] focus:border-[#c3e062]"
+                            :class="{ 'border-red-500': errors.title }"
+                            @input="autoSlug"
+                        />
+                        <button
+                            v-if="form.source_url && form.title"
+                            @click="searchTitle"
+                            class="px-4 py-2 bg-[#c3e062] text-[#2a2820] font-bold rounded text-sm hover:bg-[#d4ef73] shrink-0"
+                            :title="`Search ${getSearchProviderLabel()} for this title`"
+                        >
+                            🔍 {{ getSearchProviderLabel() }}
+                        </button>
+                    </div>
                     <p v-if="errors.title" class="field-error">
                         {{ errors.title }}
                     </p>
@@ -1100,6 +1110,94 @@ function doLogout() {
     if (isDirty.value && !confirm("You have unsaved changes. Logout anyway?"))
         return;
     router.post("/chimbi/logout");
+}
+
+function getLinkHost(url) {
+    try {
+        return new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+    } catch {
+        return "";
+    }
+}
+
+function getSearchProviderLabel() {
+    if (!form.value.source_url) return "Search";
+
+    const host = getLinkHost(form.value.source_url);
+
+    if (
+        host.includes("youtube.com") ||
+        host.includes("youtu.be") ||
+        host.includes("youtube-nocookie.com")
+    ) {
+        return "📺 YouTube";
+    }
+
+    if (host.includes("vimeo.com")) {
+        return "Vimeo";
+    }
+
+    if (host.includes("reddit.com")) {
+        return "Reddit";
+    }
+
+    if (host.includes("twitter.com") || host.includes("x.com")) {
+        return "𝕏 (Twitter)";
+    }
+
+    if (host.includes("instagram.com")) {
+        return "Instagram";
+    }
+
+    if (host.includes("tiktok.com")) {
+        return "TikTok";
+    }
+
+    return "🔍 Google";
+}
+
+function getSearchProviderUrl() {
+    if (!form.value.source_url || !form.value.title) return null;
+
+    const title = form.value.title.trim();
+    const host = getLinkHost(form.value.source_url);
+
+    if (
+        host.includes("youtube.com") ||
+        host.includes("youtu.be") ||
+        host.includes("youtube-nocookie.com")
+    ) {
+        return `https://www.youtube.com/results?search_query=${encodeURIComponent(title)}`;
+    }
+
+    if (host.includes("vimeo.com")) {
+        return `https://vimeo.com/search?q=${encodeURIComponent(title)}`;
+    }
+
+    if (host.includes("reddit.com")) {
+        return `https://www.reddit.com/search?q=${encodeURIComponent(title)}`;
+    }
+
+    if (host.includes("twitter.com") || host.includes("x.com")) {
+        return `https://twitter.com/search?q=${encodeURIComponent(title)}`;
+    }
+
+    if (host.includes("instagram.com")) {
+        return `https://www.instagram.com/explore/tags/${encodeURIComponent(title)}/`;
+    }
+
+    if (host.includes("tiktok.com")) {
+        return `https://www.tiktok.com/search?q=${encodeURIComponent(title)}`;
+    }
+
+    return `https://www.google.com/search?q=${encodeURIComponent(title)}`;
+}
+
+function searchTitle() {
+    const url = getSearchProviderUrl();
+    if (!url) return;
+
+    window.open(url, "_blank", "noopener");
 }
 </script>
 
