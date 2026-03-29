@@ -1,5 +1,174 @@
 @import "tailwindcss";
 
+@layer components {
+    .admin-btn-primary,
+    .admin-btn-secondary,
+    .admin-btn-muted,
+    .admin-btn-danger,
+    .admin-btn-muted-danger {
+        @apply inline-flex items-center justify-center;
+        min-height: 2.5rem;
+        border: 1px solid #4f4943;
+        font-size: 0.95rem;
+        transition:
+            background-color 0.15s ease,
+            color 0.15s ease,
+            border-color 0.15s ease,
+            opacity 0.15s ease;
+    }
+
+    .admin-btn-primary {
+        @apply bg-[#c3e062] text-[#2a2820] font-bold;
+        border-color: #c3e062;
+    }
+
+    .admin-btn-primary:hover {
+        @apply bg-[#d4ef73] text-[#2a2820];
+    }
+
+    .admin-btn-secondary {
+        @apply bg-[#4f4943] text-[#ebe5cb];
+        border-color: #67625b;
+    }
+
+    .admin-btn-secondary:hover {
+        @apply bg-[#67625b] text-[#ebe5cb];
+    }
+
+    .admin-btn-muted {
+        @apply bg-[#2d2b24] text-[#d4cdc0];
+        border-color: #5b554f;
+    }
+
+    .admin-btn-muted:hover {
+        border-color: #8b8477;
+        color: #f4f0e1;
+    }
+
+    .admin-btn-muted-danger {
+        @apply bg-[#4f4943] text-[#d4cdc0];
+        border-color: #5b554f;
+        opacity: 0.88;
+    }
+
+    .admin-btn-muted-danger:hover {
+        background: #6f1d1d;
+        color: #fff3f3;
+        border-color: #8b1f1f;
+    }
+
+    .admin-btn-danger {
+        background: #7f1d1d;
+        color: #fee2e2;
+        border-color: #ef4444;
+    }
+
+    .admin-btn-danger:hover {
+        background: #991b1b;
+        color: #fff1f2;
+    }
+
+    .admin-btn-primary:disabled,
+    .admin-btn-secondary:disabled,
+    .admin-btn-danger:disabled,
+    .admin-btn-muted:disabled,
+    .admin-btn-muted-danger:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+    }
+
+    .admin-stat {
+        @apply flex flex-col;
+        border: 1px solid #4f4943;
+        background: rgba(42, 40, 32, 0.45);
+    }
+
+    .admin-stat-label {
+        text-transform: uppercase;
+        color: #8f8778;
+    }
+
+    .admin-stat-value {
+        color: #ebe5cb;
+        line-height: 1.2;
+    }
+
+    .field-group {
+        @apply flex flex-col;
+        gap: 4px;
+    }
+
+    .field-label {
+        @apply text-sm uppercase tracking-[0.2em] text-[#8b8477];
+    }
+
+    .field-error {
+        @apply text-red-400 text-xs mt-1;
+        min-height: 1rem;
+    }
+
+    .status-chip {
+        @apply inline-flex items-center uppercase border rounded-full;
+        gap: 0.35rem;
+        padding: 0.25rem 0.55rem;
+        font-size: 0.73rem;
+        line-height: 1;
+        letter-spacing: 0.08em;
+        border-color: transparent;
+    }
+
+    .status-ok {
+        background: rgba(163, 230, 53, 0.14);
+        border-color: rgba(163, 230, 53, 0.28);
+        color: #d9f99d;
+    }
+
+    .status-blocked {
+        background: rgba(251, 191, 36, 0.14);
+        border-color: rgba(251, 191, 36, 0.3);
+        color: #fde68a;
+    }
+
+    .status-broken {
+        background: rgba(248, 113, 113, 0.16);
+        border-color: rgba(248, 113, 113, 0.34);
+        color: #fecaca;
+    }
+
+    .status-muted {
+        background: rgba(139, 132, 119, 0.12);
+        border-color: rgba(139, 132, 119, 0.24);
+        color: #c8c1b3;
+    }
+
+    .share-btn {
+        @apply inline-flex items-center justify-center;
+        width: 34px;
+        height: 34px;
+        border-radius: 4px;
+        border: 1px solid #67625b;
+        border-right-color: #353535;
+        border-bottom: 2px solid #353535;
+        background: #4f4943;
+        color: #ebe5cb;
+        font-family: "Ubuntu", sans-serif;
+        font-size: 15px;
+        font-weight: bold;
+        cursor: pointer;
+        text-decoration: none;
+        transition:
+            background 0.15s,
+            color 0.15s;
+    }
+
+    .share-btn:hover {
+        background: #c3e062;
+        color: #2a2820;
+        border-color: #c3e062;
+        text-decoration: none;
+    }
+}
+
 /* ── Base ─────────────────────────────────────────────────────────────────────
    Everything below is either truly global (html/body/links) or a sprite-based
    image that cannot be expressed as a Tailwind utility.
