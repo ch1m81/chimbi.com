@@ -2,63 +2,98 @@
     <div class="min-h-screen bg-[#2a2820] text-[#ebe5cb] font-['Ubuntu']">
         <div
             ref="mainHeader"
-            class="bg-[#383838] border-b border-[#4f4943] px-6 py-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between sticky top-0 z-40"
+            class="bg-[#383838] border-b border-[#4f4943] sticky top-0 z-40"
         >
-            <div class="flex items-center gap-4 min-w-0">
-                <Link
-                    href="/"
-                    class="text-[#ebe5cb]! hover:text-[#c3e062]! hover:no-underline! text-2xl shrink-0"
-                    >🏠</Link
-                >
-                <span class="text-[#6b6459]">/</span>
-                <Link
-                    href="/chimbi/create"
-                    class="text-[#ebe5cb] hover:text-[#c3e062] text-base hover:no-underline"
-                    >new article</Link
-                >
-                <span class="text-[#6b6459]">/</span>
-                <span class="text-2xl text-[#c3e062] truncate"
-                    >Tshoot link inspector</span
-                >
-            </div>
+            <div class="px-6 py-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div class="flex items-center gap-4 min-w-0">
+                    <Link
+                        href="/"
+                        class="text-[#ebe5cb]! hover:text-[#c3e062]! hover:no-underline! text-2xl shrink-0"
+                        >🏠</Link
+                    >
+                    <span class="text-[#6b6459]">/</span>
+                    <Link
+                        href="/chimbi/create"
+                        class="text-[#ebe5cb] hover:text-[#c3e062] text-base hover:no-underline"
+                        >➕ new article</Link
+                    >
+                    <span class="text-[#6b6459]">/</span>
+                    <span class="text-2xl text-[#ebe5cb] truncate"
+                        >Tshoot link inspector</span
+                    >
+                </div>
 
-            <div class="flex flex-wrap items-center gap-3">
-                <button
-                    @click="scanAll(true)"
-                    :disabled="scanState.running"
-                    class="admin-btn-primary admin-scan-btn disabled:cursor-not-allowed disabled:pointer-events-none"
-                    :class="{ 'admin-scan-btn-running': scanState.running }"
-                >
-                    <span class="inline-flex items-center gap-2">
-                        <span class="relative flex h-3 w-3 shrink-0" aria-hidden="true">
+                <div class="flex flex-wrap items-center gap-3">
+                    <button
+                        @click="scanAll(true)"
+                        :disabled="scanState.running"
+                        class="admin-btn-primary admin-scan-btn disabled:cursor-not-allowed disabled:pointer-events-none"
+                        :class="{ 'admin-scan-btn-running': scanState.running }"
+                    >
+                        <span class="inline-flex items-center gap-2">
                             <span
-                                v-if="scanState.running"
-                                class="absolute inline-flex h-full w-full rounded-full bg-[#2a2820]/35 opacity-100 animate-ping scale-[1.9]"
-                            ></span>
+                                class="relative flex h-3 w-3 shrink-0"
+                                aria-hidden="true"
+                            >
+                                <span
+                                    v-if="scanState.running"
+                                    class="absolute inline-flex h-full w-full rounded-full bg-[#2a2820]/35 opacity-100 animate-ping scale-[1.9]"
+                                ></span>
+                                <span
+                                    v-if="scanState.running"
+                                    class="absolute inline-flex h-full w-full rounded-full bg-white/20 animate-pulse scale-[2.4]"
+                                ></span>
+                                <span
+                                    class="relative inline-flex h-3 w-3 rounded-full transition-colors duration-200"
+                                    :class="
+                                        scanState.running
+                                            ? 'bg-[#2a2820] shadow-[0_0_0_2px_rgba(255,255,255,0.45)]'
+                                            : 'bg-[#2a2820]/40 border border-[#8b8477]'
+                                    "
+                                ></span>
+                            </span>
                             <span
-                                v-if="scanState.running"
-                                class="absolute inline-flex h-full w-full rounded-full bg-white/20 animate-pulse scale-[2.4]"
-                            ></span>
-                            <span
-                                class="relative inline-flex h-3 w-3 rounded-full transition-colors duration-200"
-                                :class="scanState.running ? 'bg-[#2a2820] shadow-[0_0_0_2px_rgba(255,255,255,0.45)]' : 'bg-[#2a2820]/40 border border-[#8b8477]'"
-                            ></span>
+                                class="tracking-[0.06em]"
+                                :class="scanState.running ? 'text-[#1f1d18]' : ''"
+                            >
+                                {{ scanButtonLabel }}
+                            </span>
                         </span>
-                        <span
-                            class="tracking-[0.06em]"
-                            :class="scanState.running ? 'text-[#1f1d18]' : ''"
-                        >
-                            {{ scanButtonLabel }}
-                        </span>
-                    </span>
-                </button>
-                <button @click="doLogout" class="admin-btn-muted">
-                    Logout
-                </button>
+                    </button>
+                    <button
+                        v-if="scanState.running"
+                        @click="stopScan"
+                        class="admin-btn-danger"
+                    >
+                        Stop scan
+                    </button>
+                    <button @click="doLogout" class="admin-btn-muted">
+                        Logout
+                    </button>
+                </div>
+            </div>
+            <div
+                v-if="scanState.running && scanState.total > 0"
+                class="px-6 py-1"
+            >
+                <div class="max-w-7xl mx-auto px-4">
+                    <div class="h-2 bg-[#2a2820] overflow-hidden rounded-full">
+                        <div
+                            class="h-full bg-[#c3e062] transition-all duration-300"
+                            :style="{
+                                width: `${(scanState.completed / scanState.total) * 100}%`
+                            }"
+                        ></div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div ref="issueNavSentinel" class="h-px w-full"></div>
+        <div
+            v-if="!scanState.running || scanState.total === 0"
+            ref="issueNavSentinel"
+            class="h-px w-full"
+        ></div>
 
         <div class="max-w-7xl mx-auto px-4 py-6 space-y-5">
             <div class="grid gap-4 md:grid-cols-4">
@@ -69,7 +104,9 @@
                     @click="issueFilter = 'all'"
                 >
                     <div class="admin-stat-label">Articles</div>
-                    <div class="admin-stat-value">{{ summary.article_count }}</div>
+                    <div class="admin-stat-value">
+                        {{ summary.article_count }}
+                    </div>
                 </button>
                 <button
                     type="button"
@@ -106,8 +143,12 @@
                 </button>
             </div>
 
-            <div class="bg-[#383838] border border-[#4f4943] rounded-lg px-4 py-4 flex flex-col gap-4">
-                <label class="text-sm uppercase tracking-[0.2em] text-[#8b8477]">
+            <div
+                class="bg-[#383838] border border-[#4f4943] rounded-lg px-4 py-4 flex flex-col gap-4"
+            >
+                <label
+                    class="text-sm uppercase tracking-[0.2em] text-[#8b8477]"
+                >
                     Filter articles
                 </label>
                 <input
@@ -118,13 +159,19 @@
                 />
             </div>
 
-            <div class="bg-[#383838] border border-[#4f4943] rounded-lg px-4 py-4">
+            <div
+                class="bg-[#383838] border border-[#4f4943] rounded-lg px-4 py-4"
+            >
                 <div class="flex items-center justify-between gap-3">
-                    <div class="text-xs uppercase tracking-[0.2em] text-[#8b8477]">
+                    <div
+                        class="text-xs uppercase tracking-[0.2em] text-[#8b8477]"
+                    >
                         Articles with issues
                     </div>
                     <div class="text-xs text-[#8b8477]">
-                        {{ issueArticles.length }} article{{ issueArticles.length === 1 ? "" : "s" }}
+                        {{ issueArticles.length }} article{{
+                            issueArticles.length === 1 ? "" : "s"
+                        }}
                     </div>
                 </div>
                 <div class="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
@@ -135,7 +182,8 @@
                         class="w-full text-left rounded-md border border-red-500/35 bg-red-950/20 px-3 py-3 hover:border-red-400"
                     >
                         <div class="text-sm text-[#f8f4e6]">
-                            #{{ article.id }} {{ article.title || "Untitled article" }}
+                            #{{ article.id }}
+                            {{ article.title || "Untitled article" }}
                         </div>
                         <div class="mt-1 text-xs text-[#f0b4b4]">
                             {{ article.issue_count }} broken
@@ -144,7 +192,10 @@
                             </span>
                         </div>
                     </button>
-                    <div v-if="!issueArticles.length" class="text-sm text-[#8b8477]">
+                    <div
+                        v-if="!issueArticles.length"
+                        class="text-sm text-[#8b8477]"
+                    >
                         Scan to populate issue jump list.
                     </div>
                 </div>
@@ -161,11 +212,18 @@
                 v-if="showStickyIssueNav"
                 class="sticky top-[88px] z-30 rounded-lg border border-[#5b554f] bg-[#2d2b24]/95 backdrop-blur px-4 py-3"
             >
-                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div
+                    class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"
+                >
                     <div class="text-sm text-[#d4cdc0]">
-                        <span class="text-[#f8f4e6] font-semibold">Issue navigation</span>
+                        <span class="text-[#f8f4e6] font-semibold"
+                            >Issue navigation</span
+                        >
                         <span class="text-[#8b8477]">
-                            · {{ issueArticleIds.length }} article{{ issueArticleIds.length === 1 ? "" : "s" }} with issues
+                            · {{ issueArticleIds.length }} article{{
+                                issueArticleIds.length === 1 ? "" : "s"
+                            }}
+                            with issues
                         </span>
                     </div>
 
@@ -205,9 +263,13 @@
                         class="w-full px-5 py-4 border-b border-[#4f4943] text-left hover:bg-white/3 transition-colors"
                         @click="toggleExpanded(article.id)"
                     >
-                        <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                        <div
+                            class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between"
+                        >
                             <div class="min-w-0">
-                                <div class="flex flex-wrap items-center gap-2 mb-2">
+                                <div
+                                    class="flex flex-wrap items-center gap-2 mb-2"
+                                >
                                     <span
                                         class="text-[11px] uppercase tracking-[0.25em] text-[#8b8477]"
                                     >
@@ -226,31 +288,47 @@
                                         {{ article.blocked_count }} locked
                                     </span>
                                     <span
-                                        v-if="!article.has_issues && !article.blocked_count && scanState.finished"
+                                        v-if="
+                                            !article.has_issues &&
+                                            !article.blocked_count &&
+                                            scanState.finished
+                                        "
                                         class="status-chip status-ok"
                                     >
                                         clean
                                     </span>
                                     <span class="status-chip status-muted">
-                                        {{ article.published ? "published" : "draft" }}
+                                        {{
+                                            article.published
+                                                ? "published"
+                                                : "draft"
+                                        }}
                                     </span>
                                     <span class="status-chip status-muted">
                                         {{ article.link_count }} links
                                     </span>
                                 </div>
 
-                                <h2 class="text-xl text-[#f8f4e6] leading-tight">
+                                <h2
+                                    class="text-xl text-[#f8f4e6] leading-tight"
+                                >
                                     {{ article.title || "Untitled article" }}
                                 </h2>
                                 <div class="mt-2 text-sm text-[#a9a18f]">
-                                    <span class="font-mono">{{ article.slug }}</span>
+                                    <span class="font-mono">{{
+                                        article.slug
+                                    }}</span>
                                     <span v-if="article.published_at">
                                         · {{ article.published_at }}
                                     </span>
                                 </div>
 
-                                <div class="mt-3 flex flex-wrap items-center gap-2">
-                                    <span class="text-xs uppercase tracking-[0.18em] text-[#8b8477]">
+                                <div
+                                    class="mt-3 flex flex-wrap items-center gap-2"
+                                >
+                                    <span
+                                        class="text-xs uppercase tracking-[0.18em] text-[#8b8477]"
+                                    >
                                         Found on
                                     </span>
                                     <a
@@ -277,14 +355,21 @@
                                 <div
                                     v-if="
                                         article.primary_link?.scan &&
-                                        article.primary_link.scan.state !== 'ok' &&
+                                        article.primary_link.scan.state !==
+                                            'ok' &&
                                         !article.primary_link.ignored &&
                                         article.primary_link.counts_toward_issue
                                     "
                                     class="mt-3 inline-flex max-w-full items-center gap-2 rounded-md border px-3 py-2 text-sm"
-                                    :class="primaryIssueBannerClass(article.primary_link.scan.state)"
+                                    :class="
+                                        primaryIssueBannerClass(
+                                            article.primary_link.scan.state,
+                                        )
+                                    "
                                 >
-                                    <strong class="uppercase tracking-[0.14em] text-[11px]">
+                                    <strong
+                                        class="uppercase tracking-[0.14em] text-[11px]"
+                                    >
                                         {{ article.primary_link.scan.label }}
                                     </strong>
                                     <span class="truncate">
@@ -296,22 +381,38 @@
                                     v-if="brokenThumbnailLink(article)"
                                     class="mt-3 rounded-md border border-amber-500/50 bg-amber-950/20 px-3 py-3"
                                 >
-                                    <div class="flex flex-wrap items-center gap-2">
-                                        <span class="status-chip status-blocked">thumbnail issue</span>
+                                    <div
+                                        class="flex flex-wrap items-center gap-2"
+                                    >
+                                        <span class="status-chip status-blocked"
+                                            >thumbnail issue</span
+                                        >
                                         <span class="text-sm text-amber-100">
-                                            The saved thumbnail looks broken. You can fetch a fresh candidate from the source URL.
+                                            The saved thumbnail looks broken.
+                                            You can fetch a fresh candidate from
+                                            the source URL.
                                         </span>
                                     </div>
 
                                     <div class="mt-3 flex flex-wrap gap-2">
                                         <button
                                             type="button"
-                                            @click.stop="fetchThumbnailSuggestion(article)"
-                                            :disabled="isFetchingThumbnailSuggestion(article.id)"
+                                            @click.stop="
+                                                fetchThumbnailSuggestion(
+                                                    article,
+                                                )
+                                            "
+                                            :disabled="
+                                                isFetchingThumbnailSuggestion(
+                                                    article.id,
+                                                )
+                                            "
                                             class="admin-btn-secondary text-sm disabled:opacity-40 disabled:cursor-not-allowed"
                                         >
                                             {{
-                                                isFetchingThumbnailSuggestion(article.id)
+                                                isFetchingThumbnailSuggestion(
+                                                    article.id,
+                                                )
                                                     ? "Fetching..."
                                                     : "Fetch new thumbnail"
                                             }}
@@ -319,37 +420,67 @@
                                     </div>
 
                                     <div
-                                        v-if="thumbnailSuggestionError(article.id)"
+                                        v-if="
+                                            thumbnailSuggestionError(article.id)
+                                        "
                                         class="mt-3 text-sm text-red-200"
                                     >
-                                        {{ thumbnailSuggestionError(article.id) }}
+                                        {{
+                                            thumbnailSuggestionError(article.id)
+                                        }}
                                     </div>
 
                                     <div
-                                        v-if="thumbnailSuggestion(article.id)?.suggested_thumbnail_url"
+                                        v-if="
+                                            thumbnailSuggestion(article.id)
+                                                ?.suggested_thumbnail_url
+                                        "
                                         class="mt-4 grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]"
                                     >
                                         <img
-                                            :src="thumbnailSuggestion(article.id).suggested_thumbnail_url"
+                                            :src="
+                                                thumbnailSuggestion(article.id)
+                                                    .suggested_thumbnail_url
+                                            "
                                             alt="Suggested thumbnail"
                                             class="w-full rounded-md border border-[#5b554f] bg-black/20 object-cover aspect-video"
                                         />
                                         <div class="min-w-0">
-                                            <div class="text-xs uppercase tracking-[0.18em] text-[#8b8477]">
+                                            <div
+                                                class="text-xs uppercase tracking-[0.18em] text-[#8b8477]"
+                                            >
                                                 Suggested thumbnail
                                             </div>
-                                            <div class="mt-2 text-sm text-[#c3e062] break-all">
-                                                {{ thumbnailSuggestion(article.id).suggested_thumbnail_url }}
+                                            <div
+                                                class="mt-2 text-sm text-[#c3e062] break-all"
+                                            >
+                                                {{
+                                                    thumbnailSuggestion(
+                                                        article.id,
+                                                    ).suggested_thumbnail_url
+                                                }}
                                             </div>
-                                            <div class="mt-3 flex flex-wrap gap-2">
+                                            <div
+                                                class="mt-3 flex flex-wrap gap-2"
+                                            >
                                                 <button
                                                     type="button"
-                                                    @click.stop="applyThumbnailSuggestion(article)"
-                                                    :disabled="isApplyingThumbnailSuggestion(article.id)"
+                                                    @click.stop="
+                                                        applyThumbnailSuggestion(
+                                                            article,
+                                                        )
+                                                    "
+                                                    :disabled="
+                                                        isApplyingThumbnailSuggestion(
+                                                            article.id,
+                                                        )
+                                                    "
                                                     class="admin-btn-primary text-sm disabled:opacity-40 disabled:cursor-not-allowed"
                                                 >
                                                     {{
-                                                        isApplyingThumbnailSuggestion(article.id)
+                                                        isApplyingThumbnailSuggestion(
+                                                            article.id,
+                                                        )
                                                             ? "Applying..."
                                                             : "Approve thumbnail"
                                                     }}
@@ -362,14 +493,30 @@
 
                             <div class="flex flex-wrap gap-2 shrink-0">
                                 <button
-                                    v-if="article.primary_link?.url && canToggleIgnore(article.primary_link)"
+                                    v-if="
+                                        article.primary_link?.url &&
+                                        canToggleIgnore(article.primary_link)
+                                    "
                                     type="button"
-                                    @click.stop="toggleIgnored(article, article.primary_link)"
-                                    :disabled="isTogglingIgnore(article.id, article.primary_link.url)"
+                                    @click.stop="
+                                        toggleIgnored(
+                                            article,
+                                            article.primary_link,
+                                        )
+                                    "
+                                    :disabled="
+                                        isTogglingIgnore(
+                                            article.id,
+                                            article.primary_link.url,
+                                        )
+                                    "
                                     class="admin-btn-muted text-sm disabled:opacity-40 disabled:cursor-not-allowed"
                                 >
                                     {{
-                                        isTogglingIgnore(article.id, article.primary_link.url)
+                                        isTogglingIgnore(
+                                            article.id,
+                                            article.primary_link.url,
+                                        )
                                             ? "Saving..."
                                             : article.primary_link.ignored
                                               ? "Unignore"
@@ -377,13 +524,20 @@
                                     }}
                                 </button>
                                 <span class="status-chip status-muted">
-                                    {{ isExpanded(article.id) ? "expanded" : "collapsed" }}
+                                    {{
+                                        isExpanded(article.id)
+                                            ? "expanded"
+                                            : "collapsed"
+                                    }}
                                 </span>
                             </div>
                         </div>
                     </button>
 
-                    <div v-if="isExpanded(article.id)" class="px-5 py-4 border-b border-[#4f4943] bg-[#312f28]">
+                    <div
+                        v-if="isExpanded(article.id)"
+                        class="px-5 py-4 border-b border-[#4f4943] bg-[#312f28]"
+                    >
                         <div class="flex flex-wrap gap-2 mb-4">
                             <a
                                 :href="article.view_url"
@@ -428,24 +582,35 @@
                             </button>
                         </div>
 
-                        <div class="text-xs uppercase tracking-[0.2em] text-[#8b8477] mb-2">
+                        <div
+                            class="text-xs uppercase tracking-[0.2em] text-[#8b8477] mb-2"
+                        >
                             Body
                         </div>
-                        <pre class="whitespace-pre-wrap break-words text-sm leading-6 text-[#ebe5cb] font-mono">{{
-                            article.body || "No body content."
-                        }}</pre>
+                        <pre
+                            class="whitespace-pre-wrap break-words text-sm leading-6 text-[#ebe5cb] font-mono"
+                            >{{ article.body || "No body content." }}</pre
+                        >
                     </div>
 
                     <div
-                        v-if="isExpanded(article.id) && secondaryLinks(article).length"
+                        v-if="
+                            isExpanded(article.id) &&
+                            secondaryLinks(article).length
+                        "
                         class="px-5 py-4"
                     >
-                        <div class="flex items-center justify-between gap-3 mb-3">
-                            <div class="text-xs uppercase tracking-[0.2em] text-[#8b8477]">
+                        <div
+                            class="flex items-center justify-between gap-3 mb-3"
+                        >
+                            <div
+                                class="text-xs uppercase tracking-[0.2em] text-[#8b8477]"
+                            >
                                 Other links
                             </div>
                             <div class="text-xs text-[#8b8477]">
-                                Found on URL is primary. These are just extra links found in the article.
+                                Found on URL is primary. These are just extra
+                                links found in the article.
                             </div>
                         </div>
 
@@ -455,16 +620,26 @@
                                 :key="link.url"
                                 class="rounded-lg border border-[#4f4943] bg-[#2d2b24] px-4 py-4"
                                 :class="{
-                                    'border-red-500 bg-red-950/20': link.scan?.state === 'broken',
-                                    'border-amber-500 bg-amber-950/20': link.scan?.state === 'blocked',
+                                    'border-red-500 bg-red-950/20':
+                                        link.scan?.state === 'broken',
+                                    'border-amber-500 bg-amber-950/20':
+                                        link.scan?.state === 'blocked',
                                 }"
                             >
-                                <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div
+                                    class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
+                                >
                                     <div class="min-w-0">
-                                        <div class="flex flex-wrap items-center gap-2 mb-2">
+                                        <div
+                                            class="flex flex-wrap items-center gap-2 mb-2"
+                                        >
                                             <span
                                                 class="status-chip"
-                                                :class="statusClass(link.scan?.state)"
+                                                :class="
+                                                    statusClass(
+                                                        link.scan?.state,
+                                                    )
+                                                "
                                             >
                                                 {{ statusLabel(link.scan) }}
                                             </span>
@@ -510,7 +685,10 @@
                                             class="mt-3 space-y-2"
                                         >
                                             <div
-                                                v-for="context in link.contexts.slice(0, 2)"
+                                                v-for="context in link.contexts.slice(
+                                                    0,
+                                                    2,
+                                                )"
                                                 :key="context"
                                                 class="rounded-md bg-black/15 px-3 py-2 text-xs text-[#bfb7a7] font-mono break-words"
                                             >
@@ -523,12 +701,22 @@
                                         <button
                                             v-if="canToggleIgnore(link)"
                                             type="button"
-                                            @click="toggleIgnored(article, link)"
-                                            :disabled="isTogglingIgnore(article.id, link.url)"
+                                            @click="
+                                                toggleIgnored(article, link)
+                                            "
+                                            :disabled="
+                                                isTogglingIgnore(
+                                                    article.id,
+                                                    link.url,
+                                                )
+                                            "
                                             class="admin-btn-muted text-sm disabled:opacity-40 disabled:cursor-not-allowed"
                                         >
                                             {{
-                                                isTogglingIgnore(article.id, link.url)
+                                                isTogglingIgnore(
+                                                    article.id,
+                                                    link.url,
+                                                )
                                                     ? "Saving..."
                                                     : link.ignored
                                                       ? "Unignore"
@@ -538,38 +726,77 @@
                                         <button
                                             v-if="canDeleteBodyBlock(link)"
                                             type="button"
-                                            @click="fetchBlockDeletePreview(article, link)"
-                                            :disabled="isFetchingBlockPreview(article.id, link.url) || isDeletingBlock(article.id, link.url)"
+                                            @click="
+                                                fetchBlockDeletePreview(
+                                                    article,
+                                                    link,
+                                                )
+                                            "
+                                            :disabled="
+                                                isFetchingBlockPreview(
+                                                    article.id,
+                                                    link.url,
+                                                ) ||
+                                                isDeletingBlock(
+                                                    article.id,
+                                                    link.url,
+                                                )
+                                            "
                                             class="admin-btn-danger text-sm disabled:opacity-40 disabled:cursor-not-allowed"
                                         >
                                             {{
-                                                isFetchingBlockPreview(article.id, link.url)
+                                                isFetchingBlockPreview(
+                                                    article.id,
+                                                    link.url,
+                                                )
                                                     ? "Preparing..."
                                                     : "Delete block"
                                             }}
                                         </button>
                                         <button
                                             v-if="canSearchReplacement(link)"
-                                            @click="searchReplacement(article, link)"
-                                            :disabled="isSearching(article.id, link.url)"
+                                            @click="
+                                                searchReplacement(article, link)
+                                            "
+                                            :disabled="
+                                                isSearching(
+                                                    article.id,
+                                                    link.url,
+                                                )
+                                            "
                                             class="admin-btn-primary text-sm"
                                         >
                                             {{
-                                                isSearching(article.id, link.url)
+                                                isSearching(
+                                                    article.id,
+                                                    link.url,
+                                                )
                                                     ? "Searching..."
                                                     : "Search replacement"
                                             }}
                                         </button>
                                         <button
-                                            v-if="replacementQuery(article.id, link.url)"
-                                            @click="openSearch(article.id, link.url)"
+                                            v-if="
+                                                replacementQuery(
+                                                    article.id,
+                                                    link.url,
+                                                )
+                                            "
+                                            @click="
+                                                openSearch(article.id, link.url)
+                                            "
                                             class="admin-btn-secondary text-sm"
                                         >
                                             Open search
                                         </button>
                                         <button
                                             v-if="canOpenProviderSearch(link)"
-                                            @click="openProviderSearch(article, link)"
+                                            @click="
+                                                openProviderSearch(
+                                                    article,
+                                                    link,
+                                                )
+                                            "
                                             class="admin-btn-secondary text-sm"
                                         >
                                             {{ providerSearchLabel(link) }}
@@ -578,36 +805,59 @@
                                 </div>
 
                                 <div
-                                    v-if="replacementError(article.id, link.url)"
+                                    v-if="
+                                        replacementError(article.id, link.url)
+                                    "
                                     class="mt-3 rounded-md border border-red-500/70 bg-red-950/40 px-3 py-2 text-sm text-red-100"
                                 >
                                     {{ replacementError(article.id, link.url) }}
                                 </div>
 
                                 <div
-                                    v-if="blockDeleteError(article.id, link.url)"
+                                    v-if="
+                                        blockDeleteError(article.id, link.url)
+                                    "
                                     class="mt-3 rounded-md border border-red-500/70 bg-red-950/40 px-3 py-2 text-sm text-red-100"
                                 >
                                     {{ blockDeleteError(article.id, link.url) }}
                                 </div>
 
                                 <div
-                                    v-if="blockDeleteCandidates(article.id, link.url).length"
+                                    v-if="
+                                        blockDeleteCandidates(
+                                            article.id,
+                                            link.url,
+                                        ).length
+                                    "
                                     class="mt-4 rounded-lg border border-red-500/40 bg-[#241716] px-4 py-3"
                                 >
-                                    <div class="text-xs uppercase tracking-[0.2em] text-[#f0b4b4] mb-3">
+                                    <div
+                                        class="text-xs uppercase tracking-[0.2em] text-[#f0b4b4] mb-3"
+                                    >
                                         Delete preview
                                     </div>
 
                                     <div class="flex flex-wrap gap-2 mb-3">
                                         <button
-                                            v-for="candidate in blockDeleteCandidates(article.id, link.url)"
+                                            v-for="candidate in blockDeleteCandidates(
+                                                article.id,
+                                                link.url,
+                                            )"
                                             :key="candidate.key"
                                             type="button"
-                                            @click="setSelectedBlockDeleteCandidate(article.id, link.url, candidate.key)"
+                                            @click="
+                                                setSelectedBlockDeleteCandidate(
+                                                    article.id,
+                                                    link.url,
+                                                    candidate.key,
+                                                )
+                                            "
                                             class="px-3 py-1.5 rounded border text-xs"
                                             :class="
-                                                selectedBlockDeleteKey(article.id, link.url) === candidate.key
+                                                selectedBlockDeleteKey(
+                                                    article.id,
+                                                    link.url,
+                                                ) === candidate.key
                                                     ? 'border-red-400 bg-red-900/40 text-red-100'
                                                     : 'border-[#5b554f] bg-[#2d2b24] text-[#d4cdc0]'
                                             "
@@ -616,18 +866,37 @@
                                         </button>
                                     </div>
 
-                                    <pre class="whitespace-pre-wrap break-words text-xs leading-6 text-[#f8d7d7] font-mono">{{
-                                        selectedBlockDeleteCandidate(article.id, link.url)?.preview_html
-                                    }}</pre>
+                                    <pre
+                                        class="whitespace-pre-wrap break-words text-xs leading-6 text-[#f8d7d7] font-mono"
+                                        >{{
+                                            selectedBlockDeleteCandidate(
+                                                article.id,
+                                                link.url,
+                                            )?.preview_html
+                                        }}</pre
+                                    >
                                     <div class="mt-3 flex flex-wrap gap-2">
                                         <button
                                             type="button"
-                                            @click="confirmDeleteBodyBlock(article, link)"
-                                            :disabled="isDeletingBlock(article.id, link.url)"
+                                            @click="
+                                                confirmDeleteBodyBlock(
+                                                    article,
+                                                    link,
+                                                )
+                                            "
+                                            :disabled="
+                                                isDeletingBlock(
+                                                    article.id,
+                                                    link.url,
+                                                )
+                                            "
                                             class="admin-btn-danger text-sm disabled:opacity-40 disabled:cursor-not-allowed"
                                         >
                                             {{
-                                                isDeletingBlock(article.id, link.url)
+                                                isDeletingBlock(
+                                                    article.id,
+                                                    link.url,
+                                                )
                                                     ? "Deleting..."
                                                     : "Confirm delete and update article"
                                             }}
@@ -636,27 +905,41 @@
                                 </div>
 
                                 <div
-                                    v-if="replacementResults(article.id, link.url).length"
+                                    v-if="
+                                        replacementResults(article.id, link.url)
+                                            .length
+                                    "
                                     class="mt-4 rounded-lg border border-[#5b554f] bg-[#24221d] px-4 py-3"
                                 >
-                                    <div class="text-xs uppercase tracking-[0.2em] text-[#8b8477] mb-3">
+                                    <div
+                                        class="text-xs uppercase tracking-[0.2em] text-[#8b8477] mb-3"
+                                    >
                                         Suggested replacements
                                     </div>
 
                                     <div class="space-y-3">
                                         <a
-                                            v-for="result in replacementResults(article.id, link.url)"
+                                            v-for="result in replacementResults(
+                                                article.id,
+                                                link.url,
+                                            )"
                                             :key="result.url"
                                             :href="result.url"
                                             target="_blank"
                                             rel="noopener"
                                             class="block rounded-md border border-[#4f4943] bg-[#2d2b24] px-3 py-3 hover:border-[#c3e062] hover:no-underline!"
                                         >
-                                            <div class="text-[#f8f4e6]">{{ result.title }}</div>
-                                            <div class="mt-1 text-xs text-[#8b8477]">
+                                            <div class="text-[#f8f4e6]">
+                                                {{ result.title }}
+                                            </div>
+                                            <div
+                                                class="mt-1 text-xs text-[#8b8477]"
+                                            >
                                                 {{ result.host }}
                                             </div>
-                                            <div class="mt-2 text-sm text-[#c3e062] break-all">
+                                            <div
+                                                class="mt-2 text-sm text-[#c3e062] break-all"
+                                            >
                                                 {{ result.url }}
                                             </div>
                                         </a>
@@ -668,7 +951,10 @@
                 </article>
             </div>
 
-            <div v-if="!filteredArticles.length" class="text-center text-[#8b8477] py-10">
+            <div
+                v-if="!filteredArticles.length"
+                class="text-center text-[#8b8477] py-10"
+            >
                 No articles match the current filters.
             </div>
         </div>
@@ -696,6 +982,7 @@ const scanState = ref({
     completed: 0,
     total: 0,
 });
+let scanController = null;
 
 const expanded = ref({});
 const replacementStates = ref({});
@@ -777,7 +1064,9 @@ const issueArticles = computed(() =>
     articles.value.filter((article) => hasAnyIssue(article)),
 );
 
-const issueArticleIds = computed(() => issueArticles.value.map((article) => article.id));
+const issueArticleIds = computed(() =>
+    issueArticles.value.map((article) => article.id),
+);
 
 const summary = computed(() => {
     if (scanState.value.summary) {
@@ -786,9 +1075,17 @@ const summary = computed(() => {
 
     return {
         article_count: articles.value.length,
-        issue_count: articles.value.reduce((sum, article) => sum + (article.issue_count ?? 0), 0),
-        articles_with_issues: articles.value.filter((article) => article.has_issues).length,
-        blocked_count: articles.value.reduce((sum, article) => sum + (article.blocked_count ?? 0), 0),
+        issue_count: articles.value.reduce(
+            (sum, article) => sum + (article.issue_count ?? 0),
+            0,
+        ),
+        articles_with_issues: articles.value.filter(
+            (article) => article.has_issues,
+        ).length,
+        blocked_count: articles.value.reduce(
+            (sum, article) => sum + (article.blocked_count ?? 0),
+            0,
+        ),
     };
 });
 
@@ -816,6 +1113,11 @@ function endGlobalScan() {
     scanState.value.total = 0;
 }
 
+function stopScan() {
+    scanError.value = "Scan stopped by user.";
+    scanController?.abort();
+}
+
 function isDeletingArticle(articleId) {
     return !!articleDeleteStates.value[articleId];
 }
@@ -835,9 +1137,13 @@ function mergeArticles(nextArticles) {
 function mergeArticleBatch(nextArticles) {
     if (!nextArticles?.length) return;
 
-    const nextById = new Map(nextArticles.map((article) => [article.id, enhanceArticle(article)]));
+    const nextById = new Map(
+        nextArticles.map((article) => [article.id, enhanceArticle(article)]),
+    );
 
-    articles.value = articles.value.map((article) => nextById.get(article.id) ?? article);
+    articles.value = articles.value.map(
+        (article) => nextById.get(article.id) ?? article,
+    );
 }
 
 function articleIdChunks(batchSize = LIVE_SCAN_BATCH_SIZE) {
@@ -852,9 +1158,8 @@ function articleIdChunks(batchSize = LIVE_SCAN_BATCH_SIZE) {
 }
 
 async function requestScan({ force = false, articleIds = null } = {}) {
-    const controller = new AbortController();
     const timeoutId = window.setTimeout(
-        () => controller.abort("scan-timeout"),
+        () => scanController?.abort("scan-timeout"),
         LIVE_SCAN_REQUEST_TIMEOUT_MS,
     );
 
@@ -871,11 +1176,14 @@ async function requestScan({ force = false, articleIds = null } = {}) {
                 force,
                 ...(articleIds?.length ? { article_ids: articleIds } : {}),
             }),
-            signal: controller.signal,
+            signal: scanController?.signal,
         });
     } catch (error) {
         if (error?.name === "AbortError") {
-            throw new Error("Live scan timed out before the server responded.");
+            if (error.message === "scan-timeout") {
+                throw new Error("Live scan timed out before the server responded.");
+            }
+            throw new Error("Scan was stopped.");
         }
 
         throw error;
@@ -941,6 +1249,7 @@ async function scanChunkWithFallback(chunk) {
 }
 
 async function scanAll(force = false) {
+    scanController = new AbortController();
     beginGlobalScan();
     scanError.value = "";
 
@@ -956,8 +1265,7 @@ async function scanAll(force = false) {
             }
 
             if (failedArticleIds.length) {
-                scanError.value =
-                    `Some articles could not be scanned live: ${failedArticleIds.join(", ")}`;
+                scanError.value = `Some articles could not be scanned live: ${failedArticleIds.join(", ")}`;
             }
         } else {
             const data = await requestScan({ force: false });
@@ -972,6 +1280,7 @@ async function scanAll(force = false) {
         scanError.value = error.message || "Link scan failed.";
     } finally {
         endGlobalScan();
+        scanController = null;
     }
 }
 
@@ -1044,7 +1353,11 @@ function selectedBlockDeleteKey(articleId, url) {
 
 function selectedBlockDeleteCandidate(articleId, url) {
     const state = blockDeleteState(articleId, url);
-    return (state.candidates ?? []).find((candidate) => candidate.key === state.selected_key) ?? null;
+    return (
+        (state.candidates ?? []).find(
+            (candidate) => candidate.key === state.selected_key,
+        ) ?? null
+    );
 }
 
 function blockDeleteError(articleId, url) {
@@ -1098,7 +1411,9 @@ function replacementQuery(articleId, url) {
 }
 
 function canSearchReplacement(link) {
-    return !link.ignored && ["broken", "blocked"].includes(link.scan?.state ?? "");
+    return (
+        !link.ignored && ["broken", "blocked"].includes(link.scan?.state ?? "")
+    );
 }
 
 function canToggleIgnore(link) {
@@ -1164,12 +1479,15 @@ async function searchReplacement(article, link) {
             data = raw ? JSON.parse(raw) : {};
         } catch {
             throw new Error(
-                raw?.trim()?.slice(0, 220) || "Replacement search returned a non-JSON response.",
+                raw?.trim()?.slice(0, 220) ||
+                    "Replacement search returned a non-JSON response.",
             );
         }
 
         if (!response.ok) {
-            throw new Error(data.message ?? data.error ?? "Replacement search failed.");
+            throw new Error(
+                data.message ?? data.error ?? "Replacement search failed.",
+            );
         }
 
         replacementStates.value = {
@@ -1223,12 +1541,15 @@ async function toggleIgnored(article, link) {
             data = raw ? JSON.parse(raw) : {};
         } catch {
             throw new Error(
-                raw?.trim()?.slice(0, 220) || "Ignore request returned a non-JSON response.",
+                raw?.trim()?.slice(0, 220) ||
+                    "Ignore request returned a non-JSON response.",
             );
         }
 
         if (!response.ok) {
-            throw new Error(data.message ?? data.error ?? "Ignore update failed.");
+            throw new Error(
+                data.message ?? data.error ?? "Ignore update failed.",
+            );
         }
 
         link.ignored = !!data.ignored;
@@ -1252,8 +1573,12 @@ function recalculateArticleIssues(article) {
     const activeLinks = (article.links ?? []).filter(
         (link) => !link.ignored && link.counts_toward_issue,
     );
-    article.issue_count = activeLinks.filter((link) => link.scan?.state === "broken").length;
-    article.blocked_count = activeLinks.filter((link) => link.scan?.state === "blocked").length;
+    article.issue_count = activeLinks.filter(
+        (link) => link.scan?.state === "broken",
+    ).length;
+    article.blocked_count = activeLinks.filter(
+        (link) => link.scan?.state === "blocked",
+    ).length;
     article.has_issues = article.issue_count > 0;
 }
 
@@ -1286,12 +1611,15 @@ async function fetchThumbnailSuggestion(article) {
             data = raw ? JSON.parse(raw) : {};
         } catch {
             throw new Error(
-                raw?.trim()?.slice(0, 220) || "Thumbnail suggestion returned a non-JSON response.",
+                raw?.trim()?.slice(0, 220) ||
+                    "Thumbnail suggestion returned a non-JSON response.",
             );
         }
 
         if (!response.ok) {
-            throw new Error(data.message ?? data.error ?? "Thumbnail suggestion failed.");
+            throw new Error(
+                data.message ?? data.error ?? "Thumbnail suggestion failed.",
+            );
         }
 
         thumbnailSuggestionStates.value = {
@@ -1350,12 +1678,15 @@ async function applyThumbnailSuggestion(article) {
             data = raw ? JSON.parse(raw) : {};
         } catch {
             throw new Error(
-                raw?.trim()?.slice(0, 220) || "Apply thumbnail returned a non-JSON response.",
+                raw?.trim()?.slice(0, 220) ||
+                    "Apply thumbnail returned a non-JSON response.",
             );
         }
 
         if (!response.ok) {
-            throw new Error(data.message ?? data.error ?? "Thumbnail update failed.");
+            throw new Error(
+                data.message ?? data.error ?? "Thumbnail update failed.",
+            );
         }
 
         thumbnailSuggestionStates.value = {
@@ -1363,7 +1694,8 @@ async function applyThumbnailSuggestion(article) {
             [article.id]: {
                 ...suggestion,
                 applying: false,
-                current_thumbnail_url: data.thumbnail_url ?? suggestion.suggested_thumbnail_url,
+                current_thumbnail_url:
+                    data.thumbnail_url ?? suggestion.suggested_thumbnail_url,
             },
         };
 
@@ -1450,12 +1782,15 @@ async function fetchBlockDeletePreview(article, link) {
             data = raw ? JSON.parse(raw) : {};
         } catch {
             throw new Error(
-                raw?.trim()?.slice(0, 220) || "Delete preview returned a non-JSON response.",
+                raw?.trim()?.slice(0, 220) ||
+                    "Delete preview returned a non-JSON response.",
             );
         }
 
         if (!response.ok) {
-            throw new Error(data.message ?? data.error ?? "Delete preview failed.");
+            throw new Error(
+                data.message ?? data.error ?? "Delete preview failed.",
+            );
         }
 
         blockDeleteStates.value = {
@@ -1518,12 +1853,15 @@ async function confirmDeleteBodyBlock(article, link) {
             data = raw ? JSON.parse(raw) : {};
         } catch {
             throw new Error(
-                raw?.trim()?.slice(0, 220) || "Delete block returned a non-JSON response.",
+                raw?.trim()?.slice(0, 220) ||
+                    "Delete block returned a non-JSON response.",
             );
         }
 
         if (!response.ok) {
-            throw new Error(data.message ?? data.error ?? "Delete block failed.");
+            throw new Error(
+                data.message ?? data.error ?? "Delete block failed.",
+            );
         }
 
         blockDeleteStates.value = {
@@ -1572,7 +1910,11 @@ function linkHost(link) {
 function providerSearchLabel(link) {
     const host = linkHost(link);
 
-    if (host.includes("youtube.com") || host.includes("youtu.be") || host.includes("youtube-nocookie.com")) {
+    if (
+        host.includes("youtube.com") ||
+        host.includes("youtu.be") ||
+        host.includes("youtube-nocookie.com")
+    ) {
         return "Search YouTube";
     }
 
@@ -1587,7 +1929,11 @@ function providerSearchUrl(article, link) {
     const title = (article.title ?? "").trim();
     const host = linkHost(link);
 
-    if (host.includes("youtube.com") || host.includes("youtu.be") || host.includes("youtube-nocookie.com")) {
+    if (
+        host.includes("youtube.com") ||
+        host.includes("youtu.be") ||
+        host.includes("youtube-nocookie.com")
+    ) {
         return `https://www.youtube.com/results?search_query=${encodeURIComponent(title)}`;
     }
 
@@ -1599,7 +1945,9 @@ function providerSearchUrl(article, link) {
 }
 
 function canOpenProviderSearch(link) {
-    return !link.ignored && ["broken", "blocked"].includes(link.scan?.state ?? "");
+    return (
+        !link.ignored && ["broken", "blocked"].includes(link.scan?.state ?? "")
+    );
 }
 
 function openProviderSearch(article, link) {
@@ -1639,15 +1987,20 @@ async function deleteArticle(article) {
             data = raw ? JSON.parse(raw) : {};
         } catch {
             throw new Error(
-                raw?.trim()?.slice(0, 220) || "Delete article returned a non-JSON response.",
+                raw?.trim()?.slice(0, 220) ||
+                    "Delete article returned a non-JSON response.",
             );
         }
 
         if (!response.ok) {
-            throw new Error(data.message ?? data.error ?? "Delete article failed.");
+            throw new Error(
+                data.message ?? data.error ?? "Delete article failed.",
+            );
         }
 
-        articles.value = articles.value.filter((item) => item.id !== article.id);
+        articles.value = articles.value.filter(
+            (item) => item.id !== article.id,
+        );
         scanState.value.summary = null;
         delete expanded.value[article.id];
     } catch (error) {
@@ -1677,13 +2030,16 @@ function jumpToIssue(articleId) {
     const element = document.getElementById(articleAnchor(articleId));
     element?.scrollIntoView({ behavior: "smooth", block: "start" });
 
-    currentIssueJumpIndex.value = issueArticleIds.value.findIndex((id) => id === articleId);
+    currentIssueJumpIndex.value = issueArticleIds.value.findIndex(
+        (id) => id === articleId,
+    );
 }
 
 function jumpToNextIssue() {
     if (!issueArticleIds.value.length) return;
 
-    const nextIndex = (currentIssueJumpIndex.value + 1) % issueArticleIds.value.length;
+    const nextIndex =
+        (currentIssueJumpIndex.value + 1) % issueArticleIds.value.length;
     jumpToIssue(issueArticleIds.value[nextIndex]);
 }
 
@@ -1739,8 +2095,6 @@ onMounted(() => {
     } else {
         showStickyIssueNav.value = false;
     }
-
-    scanAll(false);
 });
 
 onBeforeUnmount(() => {
@@ -1845,7 +2199,11 @@ onBeforeUnmount(() => {
 
 .admin-scan-btn-running {
     background:
-        linear-gradient(135deg, rgba(212, 239, 115, 0.96), rgba(195, 224, 98, 0.96)),
+        linear-gradient(
+            135deg,
+            rgba(212, 239, 115, 0.96),
+            rgba(195, 224, 98, 0.96)
+        ),
         #c3e062;
     color: #1f1d18;
     border-color: rgba(235, 245, 182, 0.95);
@@ -1862,7 +2220,11 @@ onBeforeUnmount(() => {
     border-radius: 0.9rem;
     padding: 1.1rem 1.15rem;
     background:
-        radial-gradient(circle at top right, rgba(195, 224, 98, 0.12), transparent 35%),
+        radial-gradient(
+            circle at top right,
+            rgba(195, 224, 98, 0.12),
+            transparent 35%
+        ),
         #383838;
     transition:
         border-color 0.15s ease,
