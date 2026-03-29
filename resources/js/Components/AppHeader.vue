@@ -1,28 +1,27 @@
 <template>
     <header
-        class="header-wrap relative h-auto w-full before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_at_55%_20%,rgba(255,255,255,0.18)_0%,transparent_40%)] before:pointer-events-none"
+        class="relative h-auto w-full before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_at_55%_20%,rgba(255,255,255,0.18)_0%,transparent_40%)] before:pointer-events-none"
     >
         <!-- ── Admin badge ─────────────────────────────────────────────────── -->
-        <div class="admin-badge absolute top-3 left-2 md:left-10 z-10">
-            <a
-                href="/rucno/chimbi/"
-                target="_blank"
-                class="admin-badge-link"
-            ></a>
+        <div class="admin-badge absolute top-3 left-2 md:left-10 z-10 w-[25px] h-6 overflow-hidden">
+            <Link
+                href="/chimbi/login"
+                class="admin-badge-link block w-full h-full"
+            ></Link>
         </div>
 
         <!-- ── Search: desktop (lg+) always visible, absolutely positioned ── -->
-        <div class="search-wrap hidden sm:flex absolute right-4 top-3 z-10">
-            <form @submit.prevent="doSearch" class="flex">
-                <fieldset class="flex border-none items-baseline">
+        <div class="search-wrap hidden sm:flex absolute right-4 top-3 z-10 w-[292px] h-9">
+            <form @submit.prevent="doSearch" class="flex w-full">
+                <fieldset class="flex border-none items-baseline w-full">
                     <input
                         v-model="searchInput"
                         type="text"
                         maxlength="25"
                         placeholder="Enter text to search"
-                        class="search-input"
+                        class="search-input w-[200px] h-7 px-1 py-0.5 mx-1 my-1 bg-[#292929] text-[#ebe5cb] font-['Ubuntu'] text-xs border-none outline-none"
                     />
-                    <input class="search-btn" type="submit" value="Go" />
+                    <input class="search-btn w-[79px] h-7 cursor-pointer border-none text-indent-[-9999px]" type="submit" value="Go" />
                 </fieldset>
             </form>
         </div>
@@ -61,7 +60,7 @@
         <!-- ── Search dropdown (< lg, toggled) ────────────────────────────── -->
         <div
             v-show="searchOpen"
-            class="sm:hidden absolute -bottom-1 left-0 w-full z-100 flex px-3 py-2 bg-[#2e2b26]"
+            class="sm:hidden absolute -bottom-1 left-0 w-full z-[100] flex px-3 py-2 bg-[#2e2b26]"
         >
             <form @submit.prevent="doSearch" class="flex w-full">
                 <fieldset class="flex border-none w-full">
@@ -70,10 +69,10 @@
                         type="text"
                         maxlength="25"
                         placeholder="Enter text to search"
-                        class="search-input flex-1"
+                        class="search-input flex-1 h-7 px-1 py-0.5 bg-[#292929] text-[#ebe5cb] font-['Ubuntu'] text-xs border-none outline-none"
                     />
                     <input
-                        class="search-btn shrink-0"
+                        class="search-btn shrink-0 w-[79px] h-7 cursor-pointer border-none text-indent-[-9999px]"
                         type="submit"
                         value="Go"
                     />
@@ -86,18 +85,18 @@
             class="flex flex-col md:flex-row items-center md:items-start justify-between pt-10"
         >
             <!-- Logo -->
-            <div class="logo-wrap shrink-0 mt-6 ml-10 lg:mt-10 lg:ml-20">
-                <Link href="/"
+            <div class="shrink-0 mt-6 ml-10 lg:mt-10 lg:ml-20" style="width: clamp(160px, 42vw, 547px)">
+                <Link href="/" class="block"
                     ><img
                         :src="'/slike/logo.png'"
                         alt="chimbi"
-                        class="logo-img"
+                        class="w-full h-auto max-w-[547px] max-h-[197px]"
                 /></Link>
             </div>
 
             <!-- Nav: right of logo on lg, stacked below on smaller -->
             <nav
-                class="nav-wrap flex self-end justify-start sm:justify-end shrink grow mt-3 sm:mt-12 sm:ml-0 mr-10 sm:mr-0 z-99 pr-4"
+                class="flex self-end justify-start sm:justify-end shrink grow mt-3 sm:mt-12 sm:ml-0 mr-10 sm:mr-0 z-10 pr-4 max-sm:scale-[clamp(0.55,calc((100vw-160px)/180px),1)] max-sm:origin-top-right"
             >
                 <ul class="nav-list">
                     <li
@@ -139,60 +138,24 @@ function doSearch() {
 </script>
 
 <style scoped>
-/* ── Logo ───────────────────────────────────────────────────────────────── */
-.logo-wrap {
-    width: clamp(160px, 42vw, 547px);
-    height: auto;
-}
-.logo-img {
-    width: 100%;
-    height: auto;
-    max-width: 547px;
-    max-height: 197px;
-}
-
 /* ── Admin badge ────────────────────────────────────────────────────────── */
 .admin-badge {
-    width: 25px;
-    height: 24px;
-    overflow: hidden;
     background: url("/slike/ikonice/badge.png") no-repeat 0 -24px;
 }
 .admin-badge-link {
-    display: block;
-    width: 100%;
-    height: 100%;
     background: url("/slike/ikonice/badge.png") no-repeat 0 0;
     text-indent: -9999px;
+    outline: none;
 }
 
 /* ── Search ─────────────────────────────────────────────────────────────── */
 .search-wrap {
-    width: 292px;
-    height: 36px;
     background: url("/slike/search_pozadina.png") no-repeat;
 }
 .search-input {
-    height: 28px;
-    padding: 2px 4px;
-    background: #292929;
-    color: #ebe5cb;
-    font-family: "Ubuntu", serif;
-    font-size: 12px;
-    border: none;
     outline: none;
 }
-@media (min-width: 640px) {
-    .search-input {
-        width: 200px;
-        margin: 4px 5px 3px 5px;
-    }
-}
 .search-btn {
-    width: 79px;
-    height: 28px;
-    cursor: pointer;
-    border: none;
     text-indent: -9999px;
     background: url("/slike/search_dugme.png") no-repeat center;
 }
@@ -208,13 +171,6 @@ function doSearch() {
     width: 272px;
     height: 147px;
     background: url("/slike/meni_putokaz.png") no-repeat left top;
-}
-
-@media (max-width: 425px) {
-    .nav-wrap {
-        transform-origin: top right;
-        transform: scale(clamp(0.55, calc((100vw - 160px) / 180px), 1));
-    }
 }
 
 /* Links: invisible text, full hit area */
