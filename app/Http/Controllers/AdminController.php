@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
-use Inertia\Response as InertiaResponse;
+use Inertia\Response;
 
 class AdminController extends Controller
 {
@@ -724,12 +724,8 @@ class AdminController extends Controller
 
     // ── Password check ────────────────────────────────────────────────────
 
-    public function loginForm(): \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse|\Symfony\Component\HttpFoundation\Response|InertiaResponse
+    public function loginForm(): Response
     {
-        if (session('admin_auth') === true) {
-            return redirect()->route('admin.tshoot');
-        }
-
         return Inertia::render('Admin/Login');
     }
 
