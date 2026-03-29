@@ -7,6 +7,7 @@ use App\Models\Tag;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -732,9 +733,24 @@ class AdminController extends Controller
     {
         $request->validate(['password' => 'required']);
 
+        $throttleKey = Str::lower($request->ip() . '|chimbi-admin-login');
+        $maxAttempts = 3;
+        $decaySeconds = 600;
+
+        if (RateLimiter::tooManyAttempts($throttleKey, $maxAttempts)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+
+            return back()->withErrors([
+                'password' => "Too many login attempts. Try again in {$seconds} seconds.",
+            ]);
+        }
+
         if ($request->password !== config('app.admin_password')) {
+            RateLimiter::hit($throttleKey, $decaySeconds);
             return back()->withErrors(['password' => 'Wrong password.']);
         }
+
+        RateLimiter::clear($throttleKey);
 
         session(['admin_auth' => true]);
         return redirect()->route('admin.tshoot');
