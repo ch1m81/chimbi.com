@@ -726,6 +726,10 @@ class AdminController extends Controller
 
     public function loginForm(): Response
     {
+        if (session('admin_auth') === true) {
+            return redirect()->route('admin.tshoot');
+        }
+
         return Inertia::render('Admin/Login');
     }
 
