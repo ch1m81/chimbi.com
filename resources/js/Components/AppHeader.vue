@@ -3,25 +3,34 @@
         class="relative h-auto w-full before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_at_55%_20%,rgba(255,255,255,0.18)_0%,transparent_40%)] before:pointer-events-none"
     >
         <!-- ── Admin badge ─────────────────────────────────────────────────── -->
-        <div class="admin-badge absolute top-3 left-2 md:left-10 z-10 w-[25px] h-6 overflow-hidden">
+        <div
+            class="admin-badge absolute top-3 left-2 md:left-10 z-10 w-[25px] h-8 overflow-hidden"
+        >
             <Link
                 href="/chimbi/login"
-                class="admin-badge-link block w-full h-full"
+                class="admin-badge-link block w-full h-full transition-opacity duration-700 ease-in-out"
             ></Link>
         </div>
 
         <!-- ── Search: desktop (lg+) always visible, absolutely positioned ── -->
-        <div class="search-wrap hidden sm:flex absolute right-4 top-3 z-10 w-[292px] h-9">
-            <form @submit.prevent="doSearch" class="flex w-full">
+        <div
+            class="search-wrap hidden sm:flex absolute right-4 top-3 z-10 w-[292px] h-12"
+        >
+            <form @submit.prevent="doSearch" class="flex">
                 <fieldset class="flex border-none items-baseline w-full">
                     <input
                         v-model="searchInput"
                         type="text"
                         maxlength="25"
                         placeholder="Enter text to search"
-                        class="search-input w-[200px] h-7 px-1 py-0.5 mx-1 my-1 bg-[#292929] text-[#ebe5cb] font-['Ubuntu'] text-xs border-none outline-none"
+                        class="search-input w-[200px] h-10 px-1 py-0.5 bg-[#292929] text-[#ebe5cb] font-['Ubuntu'] text-xs border-none outline-none"
+                        style="margin: 4px 5px 3px 5px"
                     />
-                    <input class="search-btn w-[79px] h-7 cursor-pointer border-none text-indent-[-9999px]" type="submit" value="Go" />
+                    <input
+                        class="search-btn w-[79px] h-10 cursor-pointer border-none text-indent-[-9999px]"
+                        type="submit"
+                        value="Go"
+                    />
                 </fieldset>
             </form>
         </div>
@@ -85,7 +94,10 @@
             class="flex flex-col md:flex-row items-center md:items-start justify-between pt-10"
         >
             <!-- Logo -->
-            <div class="shrink-0 mt-6 ml-10 lg:mt-10 lg:ml-20" style="width: clamp(160px, 42vw, 547px)">
+            <div
+                class="shrink-0 mt-6 ml-10 lg:mt-10 lg:ml-20"
+                style="width: clamp(160px, 42vw, 547px)"
+            >
                 <Link href="/" class="block"
                     ><img
                         :src="'/slike/logo.png'"
@@ -146,6 +158,11 @@ function doSearch() {
     background: url("/slike/ikonice/badge.png") no-repeat 0 0;
     text-indent: -9999px;
     outline: none;
+    opacity: 1;
+}
+.admin-badge-link:hover {
+    background-position: 0 -24px;
+    opacity: 0.8;
 }
 
 /* ── Search ─────────────────────────────────────────────────────────────── */
