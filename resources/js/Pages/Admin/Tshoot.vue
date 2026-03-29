@@ -4,7 +4,9 @@
             ref="mainHeader"
             class="bg-[#383838] border-b border-[#4f4943] sticky top-0 z-40"
         >
-            <div class="px-6 py-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div
+                class="px-6 py-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
+            >
                 <div class="flex items-center gap-4 min-w-0">
                     <Link
                         href="/"
@@ -54,7 +56,9 @@
                             </span>
                             <span
                                 class="tracking-[0.06em]"
-                                :class="scanState.running ? 'text-[#1f1d18]' : ''"
+                                :class="
+                                    scanState.running ? 'text-[#1f1d18]' : ''
+                                "
                             >
                                 {{ scanButtonLabel }}
                             </span>
@@ -81,7 +85,7 @@
                         <div
                             class="h-full bg-[#c3e062] transition-all duration-300"
                             :style="{
-                                width: `${(scanState.completed / scanState.total) * 100}%`
+                                width: `${(scanState.completed / scanState.total) * 100}%`,
                             }"
                         ></div>
                     </div>
@@ -1181,7 +1185,9 @@ async function requestScan({ force = false, articleIds = null } = {}) {
     } catch (error) {
         if (error?.name === "AbortError") {
             if (error.message === "scan-timeout") {
-                throw new Error("Live scan timed out before the server responded.");
+                throw new Error(
+                    "Live scan timed out before the server responded.",
+                );
             }
             throw new Error("Scan was stopped.");
         }

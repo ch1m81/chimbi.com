@@ -99,7 +99,8 @@
         >
             Deleted:
             <strong class="text-white">{{ deletedNotice }}</strong>
-            This article no longer exists. You are now editing the next available post.
+            This article no longer exists. You are now editing the next
+            available post.
         </div>
 
         <div
@@ -211,9 +212,15 @@
                         placeholder="Markdown content..."
                         class="w-full bg-olive-700 border-olive-400 border-s-4 rounded-sm px-3 py-2 text-base outline-none transition-colors hover:border-[#c3e062] focus:border-[#c3e062] font-mono resize-y"
                     ></textarea>
-                    <div class="mt-3 p-4 bg-[#383838] border border-[#4f4943] rounded-sm">
-                        <div class="flex items-center justify-between gap-3 mb-3">
-                            <label class="field-label mb-0">List Preview Rules</label>
+                    <div
+                        class="mt-3 p-4 bg-[#383838] border border-[#4f4943] rounded-sm"
+                    >
+                        <div
+                            class="flex items-center justify-between gap-3 mb-3"
+                        >
+                            <label class="field-label mb-0"
+                                >List Preview Rules</label
+                            >
                             <button
                                 type="button"
                                 @click="insertMoreMarker"
@@ -225,7 +232,9 @@
 
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-sm text-[#c3e062] mb-1">
+                                <label
+                                    class="block text-sm text-[#c3e062] mb-1"
+                                >
                                     Custom excerpt
                                 </label>
                                 <textarea
@@ -247,11 +256,15 @@
                                     max="10"
                                     class="w-20 py-1 px-2 bg-olive-700 border border-olive-400 rounded-sm text-[#ebe5cb]"
                                 />
-                                <span class="text-sm text-[#ebe5cb]">sentences</span>
+                                <span class="text-sm text-[#ebe5cb]"
+                                    >sentences</span
+                                >
                             </div>
 
                             <div class="text-sm text-[#6b6459] leading-relaxed">
-                                Priority: custom excerpt first, then `<!--more-->` marker, then sentence trim. Existing character trim is kept only as a legacy fallback.
+                                Priority: custom excerpt first, then `<!--more-->`
+                                marker, then sentence trim. Existing character
+                                trim is kept only as a legacy fallback.
                             </div>
                         </div>
                     </div>
@@ -521,7 +534,7 @@
 <script setup>
 import ArticleCard from "@/Components/ArticleCard.vue";
 import { Link, router } from "@inertiajs/vue3";
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
 const props = defineProps({
     article: { type: Object, default: null },
@@ -583,8 +596,11 @@ const publicArticleUrl = computed(() =>
         : "",
 );
 const headerTitle = computed(() => {
-    if (props.mode === "create") return form.value.title?.trim() || "New Article";
-    return form.value.title?.trim() || `Edit Article #${props.article?.id ?? ""}`;
+    if (props.mode === "create")
+        return form.value.title?.trim() || "New Article";
+    return (
+        form.value.title?.trim() || `Edit Article #${props.article?.id ?? ""}`
+    );
 });
 const headerListMode = computed(() => {
     if (form.value.excerpt?.trim()) return "Excerpt";
@@ -683,7 +699,10 @@ const listPreviewHtml = computed(() => {
 
     if (form.value.trim_sentences) {
         return textToHtml(
-            trimTextToSentences(stripHtml(form.value.body), form.value.trim_sentences),
+            trimTextToSentences(
+                stripHtml(form.value.body),
+                form.value.trim_sentences,
+            ),
         );
     }
 
@@ -709,8 +728,10 @@ const listPreviewLabel = computed(() => {
         return "Using <!--more--> marker";
     if (form.value.trim_sentences)
         return `Using first ${form.value.trim_sentences} sentence${form.value.trim_sentences === 1 ? "" : "s"}`;
-    if (firstMediaOnly(form.value.body)) return "Using first embedded media item";
-    if (form.value.body_trim) return `Using legacy ${form.value.body_trim}-character trim`;
+    if (firstMediaOnly(form.value.body))
+        return "Using first embedded media item";
+    if (form.value.body_trim)
+        return `Using legacy ${form.value.body_trim}-character trim`;
     return "Using full body";
 });
 
@@ -722,7 +743,8 @@ const previewArticle = computed(() => ({
     id: props.article?.id ?? 0,
     title: form.value.title || "Untitled article",
     slug: form.value.slug || "preview",
-    body: previewMode.value === "list" ? listPreviewHtml.value : form.value.body,
+    body:
+        previewMode.value === "list" ? listPreviewHtml.value : form.value.body,
     thumbnail: form.value.thumbnail,
     thumbnail_url: form.value.thumbnail_url,
     youtube_code: previewMode.value === "list" ? "" : form.value.youtube_code,
@@ -795,7 +817,8 @@ function normalizeUrl(url) {
 function isSourceReplacement() {
     return (
         !!normalizeUrl(form.value.source_url) &&
-        normalizeUrl(form.value.source_url) !== normalizeUrl(sourceBaselineUrl.value)
+        normalizeUrl(form.value.source_url) !==
+            normalizeUrl(sourceBaselineUrl.value)
     );
 }
 
@@ -829,7 +852,10 @@ function textToHtml(text) {
 
     return trimmed
         .split(/\n{2,}/)
-        .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`)
+        .map(
+            (paragraph) =>
+                `<p>${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`,
+        )
         .join("\n");
 }
 
@@ -840,11 +866,21 @@ function setFetchedYoutubeBody(code, description = "") {
         (descriptionHtml ? `\n${descriptionHtml}` : "");
 }
 
-function applyFetchedContent({ title, description, youtubeCode, thumbnailUrl, mediaBody = "" }) {
+function applyFetchedContent({
+    title,
+    description,
+    youtubeCode,
+    thumbnailUrl,
+    mediaBody = "",
+}) {
     const replacingSource = isSourceReplacement();
-    const shouldKeepExistingTitle = replacingSource && !!youtubeCode && !!form.value.title;
+    const shouldKeepExistingTitle =
+        replacingSource && !!youtubeCode && !!form.value.title;
 
-    if (title && (!form.value.title || (replacingSource && !shouldKeepExistingTitle))) {
+    if (
+        title &&
+        (!form.value.title || (replacingSource && !shouldKeepExistingTitle))
+    ) {
         form.value.title = title;
         if (slugGenerated.value) autoSlug();
     }
@@ -870,7 +906,10 @@ function applyFetchedContent({ title, description, youtubeCode, thumbnailUrl, me
         return;
     }
 
-    if (description && (replacingSource || hasGeneratedMediaBody(form.value.body))) {
+    if (
+        description &&
+        (replacingSource || hasGeneratedMediaBody(form.value.body))
+    ) {
         form.value.body = description;
         return;
     }
@@ -918,10 +957,7 @@ async function fetchMeta() {
 
             // Reddit hosted video — put as <video> tag in body
             let mediaBody = "";
-            if (
-                post.is_video &&
-                post.media?.reddit_video?.fallback_url
-            ) {
+            if (post.is_video && post.media?.reddit_video?.fallback_url) {
                 const videoUrl = post.media.reddit_video.fallback_url.replace(
                     /&amp;/g,
                     "&",
@@ -1068,7 +1104,11 @@ async function save() {
     const data = { ...form.value };
     if (!data.excerpt?.trim()) data.excerpt = null;
     if (!data.trim_sentences) data.trim_sentences = null;
-    if (data.excerpt || (data.body ?? "").includes("<!--more-->") || data.trim_sentences) {
+    if (
+        data.excerpt ||
+        (data.body ?? "").includes("<!--more-->") ||
+        data.trim_sentences
+    ) {
         data.body_trim = null;
     }
     if (thumbnailFile.value) data.thumbnail = thumbnailFile.value;
